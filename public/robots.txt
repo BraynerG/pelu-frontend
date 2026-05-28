@@ -1,0 +1,9 @@
+# https://www.robotstxt.org/robotstxt.html
+User-agent: *
+Allow: /
+
+# Block admin/private areas and APIs
+Disallow: /admin/
+Disallow: /api/
+
+Sitemap: https://karenmendezhair.com/sitemap.xml
