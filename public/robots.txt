@@ -6,4 +6,4 @@ Allow: /
 Disallow: /admin/
 Disallow: /api/
 
-Sitemap: https://karenmendezhair.com/sitemap.xml
+Sitemap: https://www.karenmendez.hair/sitemap.xml
