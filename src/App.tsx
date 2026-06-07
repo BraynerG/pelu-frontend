@@ -57,22 +57,22 @@ function App() {
     setSelectedService(null);
   };
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [servicesData, lookbookData] = await Promise.all([
-          getServices(),
-          getLookbookSlides()
-        ]);
-        setServices(servicesData);
-        setLookbookSlides(lookbookData);
-      } catch (err: any) {
-        setError(err.message || 'Error al cargar los datos');
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchData = async () => {
+    try {
+      const [servicesData, lookbookData] = await Promise.all([
+        getServices(),
+        getLookbookSlides()
+      ]);
+      setServices(servicesData);
+      setLookbookSlides(lookbookData);
+    } catch (err: any) {
+      setError(err.message || 'Error al cargar los datos');
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchData();
   }, []);
 
@@ -495,7 +495,7 @@ function App() {
         </>
       ) : (
         <div className="container mx-auto px-6 py-12 max-w-6xl">
-          <AdminDashboard services={services} />
+          <AdminDashboard services={services} lookbookSlides={lookbookSlides} onServicesChange={fetchData} />
         </div>
       )}
 
