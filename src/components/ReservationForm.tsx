@@ -181,8 +181,8 @@ export function ReservationForm({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="bg-white text-foreground border-border sm:max-w-[425px] rounded-none">
-        <DialogHeader>
+      <DialogContent className="bg-white text-foreground border-border max-w-[95vw] sm:max-w-[425px] rounded-none overflow-hidden flex flex-col p-6 max-h-[90vh]">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle className="text-xl font-bold text-foreground uppercase tracking-wide">Reservar Servicio</DialogTitle>
           <DialogDescription className="text-muted-foreground font-light">
             Estás reservando: <span className="font-semibold text-foreground">{serviceName}</span>
@@ -205,7 +205,7 @@ export function ReservationForm({
             ¡Reserva creada con éxito!
           </div>
         ) : (
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 py-4">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 overflow-y-auto pr-1.5 max-h-[65vh] w-full max-w-full flex flex-col min-w-0">
             {variants.length > 0 && (
               <div className="space-y-2">
                 <Label className="text-foreground font-medium text-sm">Opción / Tipo de Cabello</Label>
@@ -258,16 +258,16 @@ export function ReservationForm({
             </div>
 
             {/* Custom Date & Time Slot Selector */}
-            <div className="space-y-4 border-t border-[#ECE7DC] pt-4">
+            <div className="space-y-4 border-t border-[#ECE7DC] pt-4 w-full max-w-full overflow-hidden flex flex-col min-w-0">
               <Label className="text-foreground font-medium text-sm flex items-center gap-1.5">
                 <Calendar className="h-4 w-4 text-[#7A6241]" />
                 Fecha y Hora de la Cita
               </Label>
 
               {/* Day Selector */}
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 w-full max-w-full overflow-hidden flex flex-col min-w-0">
                 <span className="text-[10px] uppercase tracking-wider text-[#8A8172] font-semibold">1. Selecciona el Día</span>
-                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-[#C4B297]">
+                <div className="flex gap-2 overflow-x-auto pb-2 w-full max-w-full scrollbar-thin scrollbar-thumb-[#C4B297]">
                   {getNext14Days().map((day, idx) => {
                     const dayKey = formatDateKey(day);
                     const isSelected = selectedDay === dayKey;
