@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Calendar, Clock } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -14,7 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { API_URL } from '@/services/api';
+import { API_URL, getOccupiedSlots, type OccupiedSlot } from '@/services/api';
 
 const formSchema = z.object({
   customerName: z.string().min(2, { message: 'El nombre debe tener al menos 2 caracteres' }),
@@ -32,6 +33,7 @@ interface ReservationFormProps {
   onClose: () => void;
   serviceId: string;
   serviceName: string;
+  serviceDuration?: number;
   initialVariantId?: string | null;
   variants?: ServiceVariant[];
 }
@@ -41,6 +43,7 @@ export function ReservationForm({
   onClose, 
   serviceId, 
   serviceName, 
+  serviceDuration = 30,
   initialVariantId,
   variants = [] 
 }: ReservationFormProps) {
@@ -53,11 +56,18 @@ export function ReservationForm({
 
   const { user, isAuthenticated } = useAuth();
 
+  // Custom states for date-time slot selection
+  const [occupiedSlots, setOccupiedSlots] = useState<OccupiedSlot[]>([]);
+  const [loadingOccupied, setLoadingOccupied] = useState(false);
+  const [selectedDay, setSelectedDay] = useState<string>('');
+  const [selectedTime, setSelectedTime] = useState<string>('');
+
   const {
     register,
     handleSubmit,
     formState: { errors },
     reset,
+    setValue,
   } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -67,6 +77,72 @@ export function ReservationForm({
       notes: '',
     },
   });
+
+  useEffect(() => {
+    if (selectedDay && selectedTime) {
+      const [year, month, day] = selectedDay.split('-').map(Number);
+      const [hours, minutes] = selectedTime.split(':').map(Number);
+      const localDate = new Date(year, month - 1, day, hours, minutes);
+      setValue('date', localDate.toISOString());
+    } else {
+      setValue('date', '');
+    }
+  }, [selectedDay, selectedTime, setValue]);
+
+  useEffect(() => {
+    if (isOpen) {
+      setLoadingOccupied(true);
+      getOccupiedSlots()
+        .then((data) => setOccupiedSlots(data))
+        .catch((err) => console.error('Error fetching occupied slots:', err))
+        .finally(() => setLoadingOccupied(false));
+      
+      setSelectedDay('');
+      setSelectedTime('');
+    }
+  }, [isOpen]);
+
+  const activeVariant = variants.find(v => v.id === selectedVariantId);
+  const activeDuration = activeVariant ? activeVariant.duration : serviceDuration;
+
+  const getNext14Days = () => {
+    const days = [];
+    const today = new Date();
+    for (let i = 0; i < 14; i++) {
+      const d = new Date(today);
+      d.setDate(today.getDate() + i);
+      days.push(d);
+    }
+    return days;
+  };
+
+  const formatDateKey = (d: Date) => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const date = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${date}`;
+  };
+
+  const timeSlots = [
+    '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30',
+    '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30',
+    '17:00', '17:30', '18:00', '18:30', '19:00', '19:30'
+  ];
+
+  const isSlotOccupiedForClient = (dayStr: string, timeStr: string, serviceDurationMins: number) => {
+    const [year, month, day] = dayStr.split('-').map(Number);
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    
+    const slotStart = new Date(year, month - 1, day, hours, minutes).getTime();
+    const slotEnd = slotStart + serviceDurationMins * 60000;
+
+    return occupiedSlots.some((occupied) => {
+      const resStart = new Date(occupied.date).getTime();
+      const resEnd = resStart + occupied.duration * 60000;
+
+      return slotStart < resEnd && slotEnd > resStart;
+    });
+  };
 
   const onSubmit = async (data: FormValues) => {
     setIsSubmitting(true);
@@ -181,14 +257,104 @@ export function ReservationForm({
               )}
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="date" className="text-foreground font-medium text-sm">Fecha y Hora</Label>
-              <Input
-                id="date"
-                type="datetime-local"
-                className="bg-white border-border text-foreground focus:ring-primary focus:border-primary rounded-none font-light"
-                {...register('date')}
-              />
+            {/* Custom Date & Time Slot Selector */}
+            <div className="space-y-4 border-t border-[#ECE7DC] pt-4">
+              <Label className="text-foreground font-medium text-sm flex items-center gap-1.5">
+                <Calendar className="h-4 w-4 text-[#7A6241]" />
+                Fecha y Hora de la Cita
+              </Label>
+
+              {/* Day Selector */}
+              <div className="space-y-1.5">
+                <span className="text-[10px] uppercase tracking-wider text-[#8A8172] font-semibold">1. Selecciona el Día</span>
+                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-[#C4B297]">
+                  {getNext14Days().map((day, idx) => {
+                    const dayKey = formatDateKey(day);
+                    const isSelected = selectedDay === dayKey;
+                    const dayName = day.toLocaleDateString('es-ES', { weekday: 'short' }).toUpperCase();
+                    const dayNum = day.getDate();
+                    const monthName = day.toLocaleDateString('es-ES', { month: 'short' }).toUpperCase();
+                    
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => {
+                          setSelectedDay(dayKey);
+                          setSelectedTime(''); // Reset time when day changes
+                        }}
+                        className={`flex flex-col items-center justify-center min-w-[55px] p-2 border transition-all duration-200 rounded-none ${
+                          isSelected
+                            ? 'border-[#7A6241] bg-[#7A6241]/5 text-[#7A6241] font-semibold shadow-sm'
+                            : 'border-[#ECE7DC] bg-[#FAF9F5] text-[#8A8172] hover:border-[#1E1D1A] hover:text-[#1E1D1A]'
+                        }`}
+                      >
+                        <span className="text-[8px] tracking-widest font-medium opacity-80">{dayName}</span>
+                        <span className="text-xs font-serif font-bold my-0.5">{dayNum}</span>
+                        <span className="text-[8px] tracking-widest uppercase font-semibold">{monthName}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Time Selector */}
+              {selectedDay && (
+                <div className="space-y-1.5 animate-fade-in">
+                  <span className="text-[10px] uppercase tracking-wider text-[#8A8172] font-semibold block flex items-center gap-1">
+                    <Clock className="h-3 w-3 text-[#7A6241]" />
+                    2. Selecciona la Hora
+                  </span>
+                  {loadingOccupied ? (
+                    <div className="text-center py-4 text-xs text-[#8A8172] italic font-light">Cargando disponibilidad...</div>
+                  ) : (
+                    <div className="grid grid-cols-4 gap-1.5 max-h-[150px] overflow-y-auto pr-1">
+                      {timeSlots.map((slot) => {
+                        const occupied = isSlotOccupiedForClient(selectedDay, slot, activeDuration);
+                        const isSelected = selectedTime === slot;
+                        
+                        return (
+                          <button
+                            key={slot}
+                            type="button"
+                            disabled={occupied}
+                            onClick={() => setSelectedTime(slot)}
+                            className={`py-1.5 text-[10px] tracking-wider border text-center transition-all duration-150 rounded-none ${
+                              occupied
+                                ? 'bg-[#E5E5E5]/20 text-[#A3A3A3] border-dashed border-[#ECE7DC] cursor-not-allowed line-through'
+                                : isSelected
+                                  ? 'border-[#7A6241] bg-[#7A6241] text-white font-bold'
+                                  : 'border-[#ECE7DC] text-[#1E1D1A] bg-white hover:border-[#1E1D1A]'
+                            }`}
+                          >
+                            {slot} {occupied && <span className="block text-[7px] text-[#C62828] font-bold tracking-tight not-italic">Ocupado</span>}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Selection Summary */}
+              {selectedDay && selectedTime && (
+                <div className="bg-[#FAF3F3] border border-[#ECE7DC] p-3 text-xs text-center rounded-none animate-fade-in">
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-[#8A8172] block mb-0.5">Fecha y Hora Seleccionada</span>
+                  <p className="font-serif font-bold text-[#1E1D1A]">
+                    {(() => {
+                      const [year, month, day] = selectedDay.split('-').map(Number);
+                      const dateObj = new Date(year, month - 1, day);
+                      return dateObj.toLocaleDateString('es-ES', {
+                        weekday: 'long',
+                        day: 'numeric',
+                        month: 'long'
+                      });
+                    })()}{' '}
+                    a las <span className="font-mono text-[#7A6241]">{selectedTime}h</span>
+                  </p>
+                </div>
+              )}
+              
               {errors.date && (
                 <p className="text-red-500 text-xs font-light">{errors.date.message}</p>
               )}

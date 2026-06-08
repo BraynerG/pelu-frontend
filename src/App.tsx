@@ -569,6 +569,7 @@ function App() {
           onClose={handleCloseModal}
           serviceId={selectedService.id}
           serviceName={selectedService.name}
+          serviceDuration={selectedService.duration}
           initialVariantId={selectedVariantId}
           variants={selectedService.variants || []}
         />

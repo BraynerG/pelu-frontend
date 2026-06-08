@@ -52,3 +52,20 @@ export const getLookbookSlides = async (): Promise<LookbookSlide[]> => {
   }
   return result.data;
 };
+
+export interface OccupiedSlot {
+  date: string;
+  duration: number;
+}
+
+export const getOccupiedSlots = async (): Promise<OccupiedSlot[]> => {
+  const response = await fetch(`${API_URL}/reservations/occupied`);
+  if (!response.ok) {
+    throw new Error('Error al cargar la disponibilidad de citas');
+  }
+  const result = await response.json();
+  if (!result.success) {
+    throw new Error(result.error?.message || 'Error desconocido');
+  }
+  return result.data;
+};
