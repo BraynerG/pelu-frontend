@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { API_URL, type ServiceItem, type LookbookSlide } from '@/services/api';
-import { Clock, Check, X, Phone, User, Calendar, FileText, Plus, Pencil, Trash2, Sparkles } from 'lucide-react';
+import { Clock, Check, X, Phone, User, Calendar, FileText, Plus, Pencil, Trash2, Sparkles, Search, MessageSquare } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/context/AuthContext';
 
@@ -28,8 +28,15 @@ export function AdminDashboard({ services, lookbookSlides, onServicesChange }: A
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reschedulingId, setReschedulingId] = useState<string | null>(null);
-  const [newDate, setNewDate] = useState('');
   const { token } = useAuth();
+
+  // Search and filter states for reservations
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'PENDING' | 'CONFIRMED' | 'MODIFIED' | 'CANCELLED'>('ALL');
+  
+  // Rescheduling states
+  const [selectedRescheduleDay, setSelectedRescheduleDay] = useState<string>('');
+  const [selectedRescheduleTime, setSelectedRescheduleTime] = useState<string>('');
 
   // Service form state
   const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
@@ -39,7 +46,7 @@ export function AdminDashboard({ services, lookbookSlides, onServicesChange }: A
   const [formPrice, setFormPrice] = useState('');
   const [formDuration, setFormDuration] = useState('');
   const [formImageUrl, setFormImageUrl] = useState('');
-  const [formCategory, setFormCategory] = useState('hair');
+  const [formCategory, setFormCategory] = useState('hair-cut');
   const [stepsList, setStepsList] = useState<string[]>([]);
   const [variantsList, setVariantsList] = useState<{ id?: string; name: string; price: number; duration: number }[]>([]);
 
@@ -117,8 +124,7 @@ export function AdminDashboard({ services, lookbookSlides, onServicesChange }: A
     }
   };
 
-  const handleReschedule = async (id: string) => {
-    if (!newDate) return;
+  const handleReschedule = async (id: string, dateToUse: string) => {
     try {
       const response = await fetch(`${API_URL}/reservations/${id}/reschedule`, {
         method: 'PATCH',
@@ -126,17 +132,31 @@ export function AdminDashboard({ services, lookbookSlides, onServicesChange }: A
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ date: newDate }),
+        body: JSON.stringify({ date: dateToUse }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error?.message || 'Error al reagendar');
       
-      setReservations(reservations.map(r => r.id === id ? { ...r, date: newDate, status: 'MODIFIED' } : r));
+      setReservations(reservations.map(r => r.id === id ? { ...r, date: dateToUse, status: 'MODIFIED' } : r));
       setReschedulingId(null);
-      setNewDate('');
+      setSelectedRescheduleDay('');
+      setSelectedRescheduleTime('');
     } catch (err: any) {
       alert(err.message);
     }
+  };
+
+  const openRescheduleModal = (res: Reservation) => {
+    setReschedulingId(res.id);
+    const d = new Date(res.date);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    setSelectedRescheduleDay(`${year}-${month}-${day}`);
+    
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    setSelectedRescheduleTime(`${hours}:${minutes}`);
   };
 
   const handleOpenCreateService = () => {
@@ -311,13 +331,65 @@ export function AdminDashboard({ services, lookbookSlides, onServicesChange }: A
     }
   };
 
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'CONFIRMED': return 'Confirmada';
+      case 'CANCELLED': return 'Cancelada';
+      case 'MODIFIED': return 'Reagendada';
+      default: return 'Pendiente';
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'CONFIRMED': return 'text-green-700 bg-green-50';
-      case 'CANCELLED': return 'text-red-700 bg-red-50';
-      case 'MODIFIED': return 'text-blue-700 bg-blue-50';
-      default: return 'text-yellow-700 bg-yellow-50';
+      case 'CONFIRMED': return 'text-[#2e7d32] bg-[#e8f5e9] border-[#c8e6c9]';
+      case 'CANCELLED': return 'text-[#c62828] bg-[#ffebee] border-[#ffcdd2]';
+      case 'MODIFIED': return 'text-[#1565c0] bg-[#e3f2fd] border-[#bbdefb]';
+      default: return 'text-[#ef6c00] bg-[#fff3e0] border-[#ffe0b2]';
     }
+  };
+
+  const getNext14Days = () => {
+    const days = [];
+    const today = new Date();
+    for (let i = 0; i < 14; i++) {
+      const d = new Date(today);
+      d.setDate(today.getDate() + i);
+      days.push(d);
+    }
+    return days;
+  };
+
+  const formatDateKey = (d: Date) => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const date = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${date}`;
+  };
+
+  const timeSlots = [
+    '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30',
+    '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30',
+    '17:00', '17:30', '18:00', '18:30', '19:00', '19:30'
+  ];
+
+  const isSlotOccupied = (dayStr: string, timeStr: string, currentResId: string) => {
+    return reservations.some((res) => {
+      if (res.id === currentResId) return false;
+      if (res.status === 'CANCELLED') return false;
+      
+      const resDate = new Date(res.date);
+      const resYear = resDate.getFullYear();
+      const resMonth = String(resDate.getMonth() + 1).padStart(2, '0');
+      const resDay = String(resDate.getDate()).padStart(2, '0');
+      const resDayStr = `${resYear}-${resMonth}-${resDay}`;
+      
+      const resHours = String(resDate.getHours()).padStart(2, '0');
+      const resMinutes = String(resDate.getMinutes()).padStart(2, '0');
+      const resTimeStr = `${resHours}:${resMinutes}`;
+      
+      return resDayStr === dayStr && resTimeStr === timeStr;
+    });
   };
 
   const getCategoryLabel = (category: string) => {
@@ -333,6 +405,19 @@ export function AdminDashboard({ services, lookbookSlides, onServicesChange }: A
       default: return category;
     }
   };
+
+  const filteredReservations = reservations.filter((res) => {
+    if (statusFilter !== 'ALL' && res.status !== statusFilter) {
+      return false;
+    }
+    if (searchQuery.trim() !== '') {
+      const query = searchQuery.toLowerCase();
+      const nameMatch = res.customerName.toLowerCase().includes(query);
+      const phoneMatch = res.customerPhone.toLowerCase().includes(query);
+      return nameMatch || phoneMatch;
+    }
+    return true;
+  });
 
   if (loading) return <div className="text-center text-muted-foreground py-12 font-light">Cargando reservas...</div>;
   if (error) return <div className="text-center text-red-500 py-12 font-light">Error: {error}</div>;
@@ -467,6 +552,58 @@ export function AdminDashboard({ services, lookbookSlides, onServicesChange }: A
             </div>
           </div>
 
+          {/* Search & Filter Controls */}
+          <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-[#ECE7DC] pb-6">
+            {/* Status Filters (Quiet Luxury Tabs) */}
+            <div className="flex flex-wrap gap-2">
+              {(['ALL', 'PENDING', 'CONFIRMED', 'MODIFIED', 'CANCELLED'] as const).map((status) => {
+                const label = {
+                  ALL: 'Todas',
+                  PENDING: 'Pendientes',
+                  CONFIRMED: 'Confirmadas',
+                  MODIFIED: 'Reagendadas',
+                  CANCELLED: 'Canceladas',
+                }[status];
+                
+                const count = reservations.filter(r => status === 'ALL' || r.status === status).length;
+
+                return (
+                  <button
+                    key={status}
+                    onClick={() => setStatusFilter(status)}
+                    className={`px-3 py-1.5 text-[10px] tracking-wider font-bold uppercase transition-all duration-200 border rounded-none ${
+                      statusFilter === status
+                        ? 'border-[#7A6241] bg-[#7A6241] text-white'
+                        : 'border-[#ECE7DC] text-[#8A8172] hover:border-[#1E1D1A] hover:text-[#1E1D1A]'
+                    }`}
+                  >
+                    {label} <span className={`ml-1 text-[9px] ${statusFilter === status ? 'text-white/80' : 'text-[#8A8172]'}`}>({count})</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Search Input */}
+            <div className="relative w-full md:w-72">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#8A8172]" />
+              <Input
+                type="text"
+                placeholder="Buscar por cliente o teléfono..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 bg-[#FAF9F5] border-border text-xs rounded-none h-9 font-light placeholder:text-[#8A8172]/70 focus-visible:ring-[#7A6241]"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8A8172] hover:text-[#1E1D1A]"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+          </div>
+
           <div className="overflow-x-auto">
             <table className="w-full text-left text-foreground">
               <thead className="text-xs uppercase bg-muted text-muted-foreground font-medium tracking-wide">
@@ -480,23 +617,42 @@ export function AdminDashboard({ services, lookbookSlides, onServicesChange }: A
                 </tr>
               </thead>
               <tbody className="text-sm font-light">
-                {reservations.filter(res => res.status !== 'CANCELLED').map((res, rowIdx) => {
+                {filteredReservations.map((res, rowIdx) => {
                   const service = services.find(s => s.id === res.serviceId);
                   const variant = service?.variants?.find(v => v.id === res.variantId);
+                  const isCancelled = res.status === 'CANCELLED';
+                  const isModified = res.status === 'MODIFIED';
                   
                   return (
-                    <tr key={res.id} className={`border-b border-border hover:bg-muted/50 transition-colors ${rowIdx % 2 === 0 ? 'bg-white' : 'bg-[#FAF9F5]'}`}>
+                    <tr 
+                      key={res.id} 
+                      className={`border-b border-border hover:bg-[#FAF9F5]/40 transition-colors ${
+                        isCancelled 
+                          ? 'bg-[#FAF9F5]/30 opacity-60 text-muted-foreground' 
+                          : isModified
+                            ? 'bg-[#FAF9F5]/60 border-l-2 border-l-[#7A6241]'
+                            : rowIdx % 2 === 0 ? 'bg-white' : 'bg-[#FAF9F5]/20'
+                      }`}
+                    >
                       {/* Cliente */}
                       <td className="px-6 py-5">
                         <div className="flex items-center gap-3">
-                          <div className="h-8 w-8 bg-[#FAF3F3] text-[#7A6241] rounded-none flex items-center justify-center border border-[#ECE7DC]">
+                          <div className={`h-8 w-8 rounded-none flex items-center justify-center border ${
+                            isCancelled 
+                              ? 'bg-[#E5E5E5]/40 text-[#A3A3A3] border-[#ECE7DC]' 
+                              : 'bg-[#FAF3F3] text-[#7A6241] border-[#ECE7DC]'
+                          }`}>
                             <User className="h-4 w-4" />
                           </div>
                           <div>
-                            <div className="font-semibold text-[#1E1D1A]">{res.customerName}</div>
+                            <div className={`font-semibold text-[#1E1D1A] ${isCancelled ? 'line-through opacity-70' : ''}`}>{res.customerName}</div>
                             {res.notes && (
-                              <div className="text-[10px] text-[#7A6241] italic mt-1 font-light max-w-[180px] leading-relaxed truncate" title={res.notes}>
-                                <span className="font-bold not-italic mr-1">Nota:</span>"{res.notes}"
+                              <div className="mt-1.5 flex items-start gap-1.5 bg-[#FAF3F3]/80 border border-[#ECE7DC] p-2 text-[10px] text-[#7A6241] max-w-[240px] rounded-none">
+                                <MessageSquare className="h-3.5 w-3.5 mt-0.5 flex-shrink-0 text-[#7A6241]" />
+                                <div className="leading-normal font-light italic">
+                                  <span className="font-semibold not-italic block text-[8px] uppercase tracking-wider text-[#8A8172] mb-0.5">Nota de Cliente:</span>
+                                  "{res.notes}"
+                                </div>
                               </div>
                             )}
                           </div>
@@ -505,7 +661,9 @@ export function AdminDashboard({ services, lookbookSlides, onServicesChange }: A
 
                       {/* Servicio */}
                       <td className="px-6 py-5">
-                        <div className="font-medium text-foreground text-xs md:text-sm">{service?.name || 'Desconocido'}</div>
+                        <div className={`font-medium text-foreground text-xs md:text-sm ${isCancelled ? 'line-through opacity-70' : ''}`}>
+                          {service?.name || 'Desconocido'}
+                        </div>
                         {variant && (
                           <span className="inline-flex mt-1.5 px-2 py-0.5 text-[9px] bg-[#7A6241]/10 text-[#7A6241] border border-[#7A6241]/20 tracking-wider uppercase font-semibold">
                             {variant.name} ({variant.price}€)
@@ -524,7 +682,7 @@ export function AdminDashboard({ services, lookbookSlides, onServicesChange }: A
                       {/* Fecha y Hora */}
                       <td className="px-6 py-5">
                         <div className="flex flex-col text-left">
-                          <span className="font-semibold text-foreground text-xs uppercase tracking-wider">
+                          <span className={`font-semibold text-foreground text-xs uppercase tracking-wider ${isCancelled ? 'line-through opacity-70' : ''}`}>
                             {new Date(res.date).toLocaleDateString('es-ES', {
                               weekday: 'short',
                               day: 'numeric',
@@ -542,23 +700,25 @@ export function AdminDashboard({ services, lookbookSlides, onServicesChange }: A
 
                       {/* Estado */}
                       <td className="px-6 py-5">
-                        <span className={`px-2.5 py-1 text-[9px] tracking-widest font-bold border ${getStatusColor(res.status)}`}>
-                          {res.status}
+                        <span className={`inline-flex items-center px-2 py-0.5 text-[9px] tracking-wider font-bold border uppercase ${getStatusColor(res.status)}`}>
+                          {getStatusLabel(res.status)}
                         </span>
                       </td>
 
                       {/* Acciones */}
                       <td className="px-6 py-5">
                         <div className="flex gap-2">
-                          {(res.status === 'PENDING' || res.status === 'MODIFIED') && (
+                          {!isCancelled && (
                             <>
-                              <Button
-                                size="sm"
-                                className="bg-[#7A6241] hover:bg-[#1E1D1A] text-white flex items-center gap-1 rounded-none text-xs uppercase font-semibold tracking-wider px-3.5"
-                                onClick={() => updateStatus(res.id, 'CONFIRMED')}
-                              >
-                                <Check className="h-3.5 w-3.5" /> Confirmar
-                              </Button>
+                              {(res.status === 'PENDING' || res.status === 'MODIFIED') && (
+                                <Button
+                                  size="sm"
+                                  className="bg-[#7A6241] hover:bg-[#1E1D1A] text-white flex items-center gap-1 rounded-none text-xs uppercase font-semibold tracking-wider px-3.5"
+                                  onClick={() => updateStatus(res.id, 'CONFIRMED')}
+                                >
+                                  <Check className="h-3.5 w-3.5" /> Confirmar
+                                </Button>
+                              )}
                               <Button
                                 size="sm"
                                 variant="outline"
@@ -571,37 +731,21 @@ export function AdminDashboard({ services, lookbookSlides, onServicesChange }: A
                                 size="sm"
                                 variant="outline"
                                 className="border-border text-[#7A6241] hover:bg-muted flex items-center gap-1 rounded-none text-xs uppercase font-semibold tracking-wider px-3.5"
-                                onClick={() => {
-                                  setReschedulingId(res.id);
-                                  setNewDate(res.date);
-                                }}
+                                onClick={() => openRescheduleModal(res)}
                               >
                                 <Clock className="h-3.5 w-3.5" /> Reagendar
                               </Button>
                             </>
                           )}
-                          {res.status === 'CONFIRMED' && (
-                            <>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="border-border text-red-500 hover:bg-red-50 flex items-center gap-1 rounded-none text-xs uppercase font-semibold tracking-wider px-3.5"
-                                onClick={() => updateStatus(res.id, 'CANCELLED')}
-                              >
-                                <X className="h-3.5 w-3.5" /> Cancelar
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="border-border text-[#7A6241] hover:bg-muted flex items-center gap-1 rounded-none text-xs uppercase font-semibold tracking-wider px-3.5"
-                                onClick={() => {
-                                  setReschedulingId(res.id);
-                                  setNewDate(res.date);
-                                }}
-                              >
-                                <Clock className="h-3.5 w-3.5" /> Reagendar
-                              </Button>
-                            </>
+                          {isCancelled && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="border-border text-[#7A6241] hover:bg-muted flex items-center gap-1 rounded-none text-xs uppercase font-semibold tracking-wider px-3.5"
+                              onClick={() => openRescheduleModal(res)}
+                            >
+                              <Clock className="h-3.5 w-3.5" /> Programar Cita
+                            </Button>
                           )}
                         </div>
                       </td>
@@ -610,8 +754,8 @@ export function AdminDashboard({ services, lookbookSlides, onServicesChange }: A
                 })}
               </tbody>
             </table>
-            {reservations.filter(res => res.status !== 'CANCELLED').length === 0 && (
-              <div className="text-center text-muted-foreground py-12 font-light">No hay reservas activas.</div>
+            {filteredReservations.length === 0 && (
+              <div className="text-center text-muted-foreground py-12 font-light">No se encontraron reservas con estos criterios.</div>
             )}
           </div>
 
@@ -619,10 +763,10 @@ export function AdminDashboard({ services, lookbookSlides, onServicesChange }: A
           {reschedulingId && (
             <div className="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
               <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onClick={() => { setReschedulingId(null); setNewDate(''); }} />
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onClick={() => { setReschedulingId(null); setSelectedRescheduleDay(''); setSelectedRescheduleTime(''); }} />
                 <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
                 <div className="inline-block align-bottom bg-white text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full border border-[#ECE7DC] rounded-none p-8 animate-fade-in">
-                  <h3 className="text-sm font-bold text-[#1E1D1A] uppercase tracking-[0.25em] mb-4 font-serif pb-2 border-b border-[#ECE7DC]">Reagendar Cita</h3>
+                  <h3 className="text-sm font-bold text-[#1E1D1A] uppercase tracking-[0.25em] mb-4 font-serif pb-2 border-b border-[#ECE7DC]">Programar / Reagendar Cita</h3>
                   
                   {(() => {
                     const res = reservations.find(r => r.id === reschedulingId);
@@ -631,29 +775,99 @@ export function AdminDashboard({ services, lookbookSlides, onServicesChange }: A
                     const variant = service?.variants?.find(v => v.id === res.variantId);
                     return (
                       <div className="space-y-4 mb-6">
-                        <p className="text-xs text-[#5C574F] font-light leading-relaxed">
-                          Elige la nueva fecha y hora para la reserva de <strong className="font-semibold text-[#1E1D1A]">{res.customerName}</strong>.
-                        </p>
-                        <div className="bg-[#FAF9F5] border border-[#ECE7DC] p-4 text-xs space-y-1.5 rounded-none">
-                          <div><span className="text-[#8A8172] font-medium uppercase tracking-wider text-[10px]">Servicio:</span> {service?.name} {variant && `(${variant.name})`}</div>
+                        <div className="bg-[#FAF9F5] border border-[#ECE7DC] p-3 text-xs space-y-1.5 rounded-none">
+                          <div><span className="text-[#8A8172] font-semibold uppercase tracking-wider text-[9px]">Cliente:</span> {res.customerName}</div>
+                          <div><span className="text-[#8A8172] font-semibold uppercase tracking-wider text-[9px]">Servicio:</span> {service?.name} {variant && `(${variant.name})`}</div>
                           <div>
-                            <span className="text-[#8A8172] font-medium uppercase tracking-wider text-[10px]">Fecha actual:</span> {new Date(res.date).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' })}
+                            <span className="text-[#8A8172] font-semibold uppercase tracking-wider text-[9px]">Fecha actual:</span> {new Date(res.date).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' })}
                           </div>
                         </div>
                       </div>
                     );
                   })()}
 
-                  <div className="space-y-2 mb-6">
-                    <label className="text-[10px] font-bold tracking-[0.15em] uppercase text-[#1E1D1A]">Nueva Fecha y Hora</label>
-                    <Input
-                      type="datetime-local"
-                      required
-                      className="bg-white border-border text-xs rounded-none h-11 w-full font-light"
-                      value={newDate ? newDate.slice(0, 16) : ''}
-                      onChange={(e) => setNewDate(e.target.value)}
-                    />
+                  {/* Date Selector */}
+                  <div className="space-y-2 mb-4">
+                    <label className="text-[9px] font-bold tracking-[0.15em] uppercase text-[#1E1D1A] block">1. Selecciona el Día</label>
+                    <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-[#C4B297]">
+                      {getNext14Days().map((day, idx) => {
+                        const dayKey = formatDateKey(day);
+                        const isSelected = selectedRescheduleDay === dayKey;
+                        const dayName = day.toLocaleDateString('es-ES', { weekday: 'short' }).toUpperCase();
+                        const dayNum = day.getDate();
+                        const monthName = day.toLocaleDateString('es-ES', { month: 'short' }).toUpperCase();
+                        
+                        return (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => {
+                              setSelectedRescheduleDay(dayKey);
+                            }}
+                            className={`flex flex-col items-center justify-center min-w-[55px] p-2 border transition-all duration-200 rounded-none ${
+                              isSelected
+                                ? 'border-[#7A6241] bg-[#7A6241]/5 text-[#7A6241] font-semibold shadow-sm'
+                                : 'border-[#ECE7DC] bg-[#FAF9F5] text-[#8A8172] hover:border-[#1E1D1A] hover:text-[#1E1D1A]'
+                            }`}
+                          >
+                            <span className="text-[8px] tracking-widest font-medium opacity-80">{dayName}</span>
+                            <span className="text-sm font-serif font-bold my-0.5">{dayNum}</span>
+                            <span className="text-[8px] tracking-widest uppercase font-semibold">{monthName}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
+
+                  {/* Time Slot Selector */}
+                  {selectedRescheduleDay && (
+                    <div className="space-y-2 mb-6 animate-fade-in">
+                      <label className="text-[9px] font-bold tracking-[0.15em] uppercase text-[#1E1D1A] block">2. Selecciona la Hora</label>
+                      <div className="grid grid-cols-4 gap-1.5 max-h-[160px] overflow-y-auto pr-1">
+                        {timeSlots.map((slot) => {
+                          const occupied = isSlotOccupied(selectedRescheduleDay, slot, reschedulingId!);
+                          const isSelected = selectedRescheduleTime === slot;
+                          
+                          return (
+                            <button
+                              key={slot}
+                              type="button"
+                              disabled={occupied}
+                              onClick={() => setSelectedRescheduleTime(slot)}
+                              className={`py-1.5 text-[10px] tracking-wider border text-center transition-all duration-150 rounded-none ${
+                                occupied
+                                  ? 'bg-[#E5E5E5]/20 text-[#A3A3A3] border-dashed border-[#ECE7DC] cursor-not-allowed line-through'
+                                  : isSelected
+                                    ? 'border-[#7A6241] bg-[#7A6241] text-white font-bold'
+                                    : 'border-[#ECE7DC] text-[#1E1D1A] bg-white hover:border-[#1E1D1A]'
+                              }`}
+                            >
+                              {slot} {occupied && <span className="block text-[7px] text-[#C62828] font-bold tracking-tight not-italic">Ocupado</span>}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Selection Summary */}
+                  {selectedRescheduleDay && selectedRescheduleTime && (
+                    <div className="mb-6 bg-[#FAF3F3] border border-[#ECE7DC] p-3 text-xs text-center rounded-none animate-fade-in">
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-[#8A8172] block mb-1">Nueva Fecha Programada</span>
+                      <p className="font-serif font-bold text-[#1E1D1A]">
+                        {(() => {
+                          const [year, month, day] = selectedRescheduleDay.split('-').map(Number);
+                          const dateObj = new Date(year, month - 1, day);
+                          return dateObj.toLocaleDateString('es-ES', {
+                            weekday: 'long',
+                            day: 'numeric',
+                            month: 'long'
+                          });
+                        })()}{' '}
+                        a las <span className="font-mono text-[#7A6241]">{selectedRescheduleTime}h</span>
+                      </p>
+                    </div>
+                  )}
 
                   <div className="flex gap-4">
                     <Button
@@ -662,15 +876,22 @@ export function AdminDashboard({ services, lookbookSlides, onServicesChange }: A
                       className="flex-grow border-border text-muted-foreground hover:text-foreground rounded-none uppercase text-[10px] tracking-widest font-semibold py-4"
                       onClick={() => {
                         setReschedulingId(null);
-                        setNewDate('');
+                        setSelectedRescheduleDay('');
+                        setSelectedRescheduleTime('');
                       }}
                     >
                       Cancelar
                     </Button>
                     <Button
                       type="button"
-                      className="flex-grow bg-[#1E1D1A] hover:bg-[#7A6241] text-white rounded-none uppercase text-[10px] tracking-widest font-semibold py-4"
-                      onClick={() => handleReschedule(reschedulingId)}
+                      disabled={!selectedRescheduleDay || !selectedRescheduleTime}
+                      className="flex-grow bg-[#1E1D1A] hover:bg-[#7A6241] text-white rounded-none uppercase text-[10px] tracking-widest font-semibold py-4 disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={() => {
+                        const [year, month, day] = selectedRescheduleDay.split('-').map(Number);
+                        const [hours, minutes] = selectedRescheduleTime.split(':').map(Number);
+                        const localDate = new Date(year, month - 1, day, hours, minutes);
+                        handleReschedule(reschedulingId!, localDate.toISOString());
+                      }}
                     >
                       Confirmar
                     </Button>
@@ -679,7 +900,6 @@ export function AdminDashboard({ services, lookbookSlides, onServicesChange }: A
               </div>
             </div>
           )}
-          </div>
         </>
       )}
 
