@@ -26,6 +26,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedService, setSelectedService] = useState<ServiceItem | null>(null);
+  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentView, setCurrentView] = useState<'catalog' | 'admin'>('catalog');
   const { isAuthenticated, isAdmin, logout, user } = useAuth();
@@ -33,8 +34,11 @@ function App() {
 
   // Redesign state
   const [currentHeroSlide, setCurrentHeroSlide] = useState(0);
-  const [activeTab, setActiveTab] = useState<'all' | 'hair' | 'makeup' | 'spa'>('all');
+  const [activeTab, setActiveTab] = useState<
+    'all' | 'hair-cut' | 'hair-style' | 'hair-color' | 'hair-treatment' | 'hair-straightening' | 'makeup' | 'spa'
+  >('hair-cut');
   const [quickViewService, setQuickViewService] = useState<ServiceItem | null>(null);
+  const [selectedQuickViewVariant, setSelectedQuickViewVariant] = useState<string | null>(null);
   const [favorites, setFavorites] = useState<string[]>([]);
 
   // Auto rotate hero slide
@@ -46,8 +50,9 @@ function App() {
     return () => clearInterval(interval);
   }, [currentView, lookbookSlides]);
 
-  const handleOpenModal = (service: ServiceItem) => {
+  const handleOpenModal = (service: ServiceItem, variantId?: string | null) => {
     setSelectedService(service);
+    setSelectedVariantId(variantId || null);
     setIsModalOpen(true);
     setQuickViewService(null); // Close quick view if open
   };
@@ -55,6 +60,16 @@ function App() {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setSelectedService(null);
+    setSelectedVariantId(null);
+  };
+
+  const handleOpenQuickView = (service: ServiceItem) => {
+    setQuickViewService(service);
+    if (service.variants && service.variants.length > 0) {
+      setSelectedQuickViewVariant(service.variants[0].id);
+    } else {
+      setSelectedQuickViewVariant(null);
+    }
   };
 
   const fetchData = async () => {
@@ -311,10 +326,14 @@ function App() {
             <div className="flex justify-center border-b border-[#ECE7DC] mb-12 overflow-x-auto whitespace-nowrap scrollbar-none">
               <div className="flex gap-8">
                 {[
-                  { id: 'all', label: 'TODOS LOS RITUALES' },
-                  { id: 'hair', label: 'CABELLO & PEINADO' },
+                  { id: 'all', label: 'TODOS' },
+                  { id: 'hair-cut', label: 'CORTES' },
+                  { id: 'hair-style', label: 'PEINADOS & NOVIAS' },
+                  { id: 'hair-color', label: 'COLOR & MECHAS' },
+                  { id: 'hair-treatment', label: 'TRATAMIENTOS & BOTOX' },
+                  { id: 'hair-straightening', label: 'ALISADOS' },
                   { id: 'makeup', label: 'MAQUILLAJE & MIRADA' },
-                  { id: 'spa', label: 'FACIAL & DERMOESTÉTICA' }
+                  { id: 'spa', label: 'FACIAL & SPA' }
                 ].map((tab) => (
                   <button
                     key={tab.id}
@@ -363,7 +382,7 @@ function App() {
                     className="bg-white border border-[#ECE7DC] transition-all duration-500 hover:border-[#7A6241]/50 group luxury-shadow-sm hover:luxury-shadow flex flex-col justify-between"
                   >
                     {/* Visual Card Top */}
-                    <div className="relative overflow-hidden aspect-[4/3] image-scale-container bg-[#FAF9F5] cursor-pointer" onClick={() => setQuickViewService(service)}>
+                    <div className="relative overflow-hidden aspect-[4/3] image-scale-container bg-[#FAF9F5] cursor-pointer" onClick={() => handleOpenQuickView(service)}>
                       <img 
                         src={service.imageUrl || '/images/hero_salon.webp'} 
                         alt={service.name}
@@ -390,7 +409,7 @@ function App() {
 
                       {/* Tag Label */}
                       <span className="absolute bottom-4 left-4 bg-[#1E1D1A] text-white text-[9px] tracking-widest uppercase font-semibold py-1 px-3">
-                        {service.price >= 80 ? 'PREMIUM RITUAL' : 'RECOMENDADO'}
+                        {service.price >= 80 || (service.variants && service.variants.some(v => v.price >= 80)) ? 'PREMIUM RITUAL' : 'RECOMENDADO'}
                       </span>
                     </div>
 
@@ -400,7 +419,7 @@ function App() {
                         <div className="flex justify-between items-start gap-4">
                           <h3 
                             className="text-lg font-serif text-[#1E1D1A] font-semibold group-hover:text-[#7A6241] transition-colors cursor-pointer"
-                            onClick={() => setQuickViewService(service)}
+                            onClick={() => handleOpenQuickView(service)}
                           >
                             {service.name}
                           </h3>
@@ -413,7 +432,13 @@ function App() {
                       <div className="pt-4 border-t border-[#FAF9F5] flex justify-between items-center">
                         <div className="flex items-center gap-1.5 text-[10px] text-[#534C43] uppercase tracking-wider font-medium">
                           <Clock className="h-3.5 w-3.5 text-[#7A6241]" />
-                          <span>{service.duration} MIN</span>
+                          <span>
+                            {service.variants && service.variants.length > 0 ? (
+                              `${Math.min(...service.variants.map(v => v.duration))}-${Math.max(...service.variants.map(v => v.duration))} MIN`
+                            ) : (
+                              `${service.duration} MIN`
+                            )}
+                          </span>
                           <span className="text-[#ECE7DC]">|</span>
                           <div className="flex items-center text-[#7A6241]">
                             <Star className="h-3 w-3 fill-current" />
@@ -421,7 +446,11 @@ function App() {
                           </div>
                         </div>
                         <span className="text-lg font-bold font-serif text-[#1E1D1A]">
-                          {service.price}€
+                          {service.variants && service.variants.length > 0 ? (
+                            `Desde ${Math.min(...service.variants.map(v => v.price))}€`
+                          ) : (
+                            `${service.price}€`
+                          )}
                         </span>
                       </div>
                     </div>
@@ -430,13 +459,13 @@ function App() {
                     <div className="px-6 pb-6 pt-2 flex gap-3">
                       <button 
                         className="flex-1 py-3 text-[10px] tracking-[0.2em] font-medium border border-[#ECE7DC] hover:border-[#1E1D1A] text-[#5C574F] hover:text-[#1E1D1A] transition-all uppercase rounded-none text-center"
-                        onClick={() => setQuickViewService(service)}
+                        onClick={() => handleOpenQuickView(service)}
                       >
                         Ver Ritual
                       </button>
                       <button 
                         className="flex-1 py-3 text-[10px] tracking-[0.2em] font-medium bg-[#1E1D1A] hover:bg-[#7A6241] text-white transition-all uppercase rounded-none"
-                        onClick={() => handleOpenModal(service)}
+                        onClick={() => handleOpenModal(service, service.variants && service.variants.length > 0 ? service.variants[0].id : null)}
                       >
                         Reservar
                       </button>
@@ -540,6 +569,8 @@ function App() {
           onClose={handleCloseModal}
           serviceId={selectedService.id}
           serviceName={selectedService.name}
+          initialVariantId={selectedVariantId}
+          variants={selectedService.variants || []}
         />
       )}
 
@@ -599,66 +630,97 @@ function App() {
                 </div>
 
                 {/* Right Side: Ritual Details & Actions */}
-                <div className="p-8 md:p-12 flex flex-col justify-between h-[550px] overflow-y-auto">
-                  <div className="space-y-6">
-                    <div className="flex justify-between items-end border-b border-[#ECE7DC] pb-4">
-                      <div>
-                        <div className="flex items-center gap-1 text-[#7A6241] mb-1">
-                          <Star className="h-3 w-3 fill-current" />
-                          <Star className="h-3 w-3 fill-current" />
-                          <Star className="h-3 w-3 fill-current" />
-                          <Star className="h-3 w-3 fill-current" />
-                          <Star className="h-3 w-3 fill-current" />
-                          <span className="text-[10px] text-[#534C43] ml-1 font-sans uppercase font-medium">5.0 (42 opiniones)</span>
-                        </div>
-                        <span className="text-2xl font-serif font-bold text-[#1E1D1A]">
-                          {quickViewService.price}€
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1.5 text-xs text-[#534C43] uppercase tracking-wider font-semibold">
-                        <Clock className="h-4 w-4 text-[#7A6241]" />
-                        <span>{quickViewService.duration} MINUTOS</span>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <h4 className="text-xs font-bold tracking-[0.25em] text-[#1E1D1A] uppercase">DESCRIPCIÓN DEL RITUAL</h4>
-                      <p className="text-xs text-[#5C574F] font-light leading-relaxed">
-                        {quickViewService.description || 'Una experiencia holística e integral para restaurar tu bienestar y elevar tu estilo.'}
-                      </p>
-                    </div>
-
-                    {/* Step-by-Step Details */}
-                    {quickViewService.steps && quickViewService.steps.length > 0 && (
-                      <div className="space-y-3.5">
-                        <h4 className="text-xs font-bold tracking-[0.25em] text-[#1E1D1A] uppercase">PASOS DEL TRATAMIENTO</h4>
-                        <div className="space-y-2.5">
-                          {quickViewService.steps.map((step, stepIdx) => (
-                            <div key={stepIdx} className="flex gap-3 items-start">
-                              <CheckCircle2 className="h-4 w-4 text-[#7A6241] shrink-0 mt-0.5" />
-                              <span className="text-xs text-[#5C574F] font-light leading-relaxed">{step}</span>
+                {(() => {
+                  const activeVariant = quickViewService.variants?.find(v => v.id === selectedQuickViewVariant) || null;
+                  const displayPrice = activeVariant ? activeVariant.price : quickViewService.price;
+                  const displayDuration = activeVariant ? activeVariant.duration : quickViewService.duration;
+                  
+                  return (
+                    <div className="p-8 md:p-12 flex flex-col justify-between h-[550px] overflow-y-auto">
+                      <div className="space-y-6">
+                        <div className="flex justify-between items-end border-b border-[#ECE7DC] pb-4">
+                          <div>
+                            <div className="flex items-center gap-1 text-[#7A6241] mb-1">
+                              <Star className="h-3 w-3 fill-current" />
+                              <Star className="h-3 w-3 fill-current" />
+                              <Star className="h-3 w-3 fill-current" />
+                              <Star className="h-3 w-3 fill-current" />
+                              <Star className="h-3 w-3 fill-current" />
+                              <span className="text-[10px] text-[#534C43] ml-1 font-sans uppercase font-medium">5.0 (42 opiniones)</span>
                             </div>
-                          ))}
+                            <span className="text-2xl font-serif font-bold text-[#1E1D1A]">
+                              {displayPrice}€
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5 text-xs text-[#534C43] uppercase tracking-wider font-semibold">
+                            <Clock className="h-4 w-4 text-[#7A6241]" />
+                            <span>{displayDuration} MINUTOS</span>
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  </div>
 
-                  <div className="pt-8 flex gap-4">
-                    <button 
-                      onClick={() => setQuickViewService(null)}
-                      className="flex-1 py-4 text-xs tracking-[0.2em] font-semibold border border-[#ECE7DC] hover:border-[#1E1D1A] text-[#5C574F] hover:text-[#1E1D1A] transition-all uppercase rounded-none"
-                    >
-                      Volver
-                    </button>
-                    <button 
-                      onClick={() => handleOpenModal(quickViewService)}
-                      className="flex-1 py-4 text-xs tracking-[0.2em] font-semibold bg-[#1E1D1A] hover:bg-[#7A6241] text-white transition-all uppercase rounded-none shadow-lg"
-                    >
-                      Reservar Ahora
-                    </button>
-                  </div>
-                </div>
+                        {/* Variant Selector */}
+                        {quickViewService.variants && quickViewService.variants.length > 0 && (
+                          <div className="space-y-3">
+                            <h4 className="text-xs font-bold tracking-[0.25em] text-[#1E1D1A] uppercase">OPCIONES DISPONIBLES</h4>
+                            <div className="flex flex-wrap gap-2">
+                              {quickViewService.variants.map((v) => (
+                                <button
+                                  key={v.id}
+                                  onClick={() => setSelectedQuickViewVariant(v.id)}
+                                  type="button"
+                                  className={`px-3 py-1.5 text-xs tracking-wider border transition-all rounded-none ${
+                                    selectedQuickViewVariant === v.id
+                                      ? 'border-[#7A6241] bg-[#7A6241]/10 text-[#7A6241] font-semibold'
+                                      : 'border-[#ECE7DC] hover:border-[#1E1D1A] text-[#5C574F]'
+                                  }`}
+                                >
+                                  {v.name}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="space-y-2">
+                          <h4 className="text-xs font-bold tracking-[0.25em] text-[#1E1D1A] uppercase">DESCRIPCIÓN DEL RITUAL</h4>
+                          <p className="text-xs text-[#5C574F] font-light leading-relaxed">
+                            {quickViewService.description || 'Una experiencia holística e integral para restaurar tu bienestar y elevar tu estilo.'}
+                          </p>
+                        </div>
+
+                        {/* Step-by-Step Details */}
+                        {quickViewService.steps && quickViewService.steps.length > 0 && (
+                          <div className="space-y-3.5">
+                            <h4 className="text-xs font-bold tracking-[0.25em] text-[#1E1D1A] uppercase">PASOS DEL TRATAMIENTO</h4>
+                            <div className="space-y-2.5">
+                              {quickViewService.steps.map((step, stepIdx) => (
+                                <div key={stepIdx} className="flex gap-3 items-start">
+                                  <CheckCircle2 className="h-4 w-4 text-[#7A6241] shrink-0 mt-0.5" />
+                                  <span className="text-xs text-[#5C574F] font-light leading-relaxed">{step}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="pt-8 flex gap-4">
+                        <button 
+                          onClick={() => setQuickViewService(null)}
+                          className="flex-1 py-4 text-xs tracking-[0.2em] font-semibold border border-[#ECE7DC] hover:border-[#1E1D1A] text-[#5C574F] hover:text-[#1E1D1A] transition-all uppercase rounded-none"
+                        >
+                          Volver
+                        </button>
+                        <button 
+                          onClick={() => handleOpenModal(quickViewService, selectedQuickViewVariant)}
+                          className="flex-1 py-4 text-xs tracking-[0.2em] font-semibold bg-[#1E1D1A] hover:bg-[#7A6241] text-white transition-all uppercase rounded-none shadow-lg"
+                        >
+                          Reservar Ahora
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           </div>

@@ -13,6 +13,7 @@ interface Reservation {
   status: 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'MODIFIED';
   notes: string | null;
   serviceId: string;
+  variantId?: string | null;
 }
 
 interface AdminDashboardProps {
@@ -40,6 +41,7 @@ export function AdminDashboard({ services, lookbookSlides, onServicesChange }: A
   const [formImageUrl, setFormImageUrl] = useState('');
   const [formCategory, setFormCategory] = useState('hair');
   const [stepsList, setStepsList] = useState<string[]>([]);
+  const [variantsList, setVariantsList] = useState<{ id?: string; name: string; price: number; duration: number }[]>([]);
 
   // Lookbook form state
   const [isLookbookModalOpen, setIsLookbookModalOpen] = useState(false);
@@ -144,8 +146,9 @@ export function AdminDashboard({ services, lookbookSlides, onServicesChange }: A
     setFormPrice('');
     setFormDuration('');
     setFormImageUrl('');
-    setFormCategory('hair');
+    setFormCategory('hair-cut');
     setStepsList([]);
+    setVariantsList([]);
     setIsServiceModalOpen(true);
   };
 
@@ -158,6 +161,7 @@ export function AdminDashboard({ services, lookbookSlides, onServicesChange }: A
     setFormImageUrl(service.imageUrl || '');
     setFormCategory(service.category);
     setStepsList(service.steps || []);
+    setVariantsList(service.variants || []);
     setIsServiceModalOpen(true);
   };
 
@@ -195,7 +199,12 @@ export function AdminDashboard({ services, lookbookSlides, onServicesChange }: A
       duration: parseInt(formDuration),
       imageUrl: formImageUrl || null,
       category: formCategory,
-      steps: stepsList.filter(s => s.trim() !== '')
+      steps: stepsList.filter(s => s.trim() !== ''),
+      variants: variantsList.map(v => ({
+        name: v.name,
+        price: typeof v.price === 'string' ? parseFloat(v.price) : v.price,
+        duration: typeof v.duration === 'string' ? parseInt(v.duration) : v.duration
+      }))
     };
 
     try {
@@ -313,7 +322,12 @@ export function AdminDashboard({ services, lookbookSlides, onServicesChange }: A
 
   const getCategoryLabel = (category: string) => {
     switch (category) {
-      case 'hair': return 'Cabello';
+      case 'hair-cut': return 'Cabello - Cortes';
+      case 'hair-style': return 'Cabello - Peinados';
+      case 'hair-color': return 'Cabello - Color/Mechas';
+      case 'hair-treatment': return 'Cabello - Tratamientos';
+      case 'hair-straightening': return 'Cabello - Alisados';
+      case 'hair-addon': return 'Cabello - Adicionales';
       case 'makeup': return 'Maquillaje';
       case 'spa': return 'Spa / Facial';
       default: return category;
@@ -418,7 +432,10 @@ export function AdminDashboard({ services, lookbookSlides, onServicesChange }: A
                     <div className="flex-grow space-y-2 overflow-y-auto max-h-[140px] pr-0.5">
                       {dayReservations.length > 0 ? (
                         dayReservations.map((res) => {
-                          const serviceName = services.find(s => s.id === res.serviceId)?.name || 'Tratamiento';
+                          const service = services.find(s => s.id === res.serviceId);
+                          const variant = service?.variants?.find(v => v.id === res.variantId);
+                          const serviceName = service ? (variant ? `${service.name} (${variant.name})` : service.name) : 'Tratamiento';
+                          
                           const timeStr = new Date(res.date).toLocaleTimeString('es-ES', {
                             hour: '2-digit',
                             minute: '2-digit'
@@ -463,114 +480,205 @@ export function AdminDashboard({ services, lookbookSlides, onServicesChange }: A
                 </tr>
               </thead>
               <tbody className="text-sm font-light">
-                {reservations.filter(res => res.status !== 'CANCELLED').map((res) => (
-                  <tr key={res.id} className="border-b border-border hover:bg-muted/50 transition-colors">
-                    <td className="px-6 py-5 flex items-center gap-3">
-                      <User className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium text-foreground">{res.customerName}</span>
-                    </td>
-                    <td className="px-6 py-5 text-muted-foreground">
-                      {services.find(s => s.id === res.serviceId)?.name || 'Desconocido'}
-                    </td>
-                    <td className="px-6 py-5">
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <Phone className="h-4 w-4 text-muted-foreground" />
-                        {res.customerPhone}
-                      </div>
-                    </td>
-                    <td className="px-6 py-5">
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <Clock className="h-4 w-4 text-muted-foreground" />
-                        {new Date(res.date).toLocaleString('es-ES', {
-                          dateStyle: 'short',
-                          timeStyle: 'short'
-                        })}
-                      </div>
-                    </td>
-                    <td className="px-6 py-5">
-                      <span className={`px-2.5 py-1 rounded-none text-xs font-medium uppercase tracking-wide ${getStatusColor(res.status)}`}>
-                        {res.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-5">
-                      <div className="flex gap-2">
-                        {reschedulingId === res.id ? (
-                          <div className="flex items-center gap-2">
-                            <Input
-                              type="datetime-local"
-                              className="bg-white border-border text-foreground text-xs w-40 rounded-none font-light"
-                              value={newDate}
-                              onChange={(e) => setNewDate(e.target.value)}
-                            />
-                            <Button
-                              size="sm"
-                              className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-none text-xs uppercase"
-                              onClick={() => handleReschedule(res.id)}
-                            >
-                              Ok
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="text-muted-foreground hover:text-foreground rounded-none text-xs"
-                              onClick={() => {
-                                setReschedulingId(null);
-                                setNewDate('');
-                              }}
-                            >
-                              X
-                            </Button>
+                {reservations.filter(res => res.status !== 'CANCELLED').map((res, rowIdx) => {
+                  const service = services.find(s => s.id === res.serviceId);
+                  const variant = service?.variants?.find(v => v.id === res.variantId);
+                  
+                  return (
+                    <tr key={res.id} className={`border-b border-border hover:bg-muted/50 transition-colors ${rowIdx % 2 === 0 ? 'bg-white' : 'bg-[#FAF9F5]'}`}>
+                      {/* Cliente */}
+                      <td className="px-6 py-5">
+                        <div className="flex items-center gap-3">
+                          <div className="h-8 w-8 bg-[#FAF3F3] text-[#7A6241] rounded-none flex items-center justify-center border border-[#ECE7DC]">
+                            <User className="h-4 w-4" />
                           </div>
-                        ) : (
-                          <>
-                            {(res.status === 'PENDING' || res.status === 'MODIFIED') && (
-                              <>
-                                <Button
-                                  size="sm"
-                                  className="bg-primary hover:bg-primary/90 text-primary-foreground flex items-center gap-1 rounded-none text-xs uppercase font-medium"
-                                  onClick={() => updateStatus(res.id, 'CONFIRMED')}
-                                >
-                                  <Check className="h-3.5 w-3.5" /> Confirmar
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="border-border text-muted-foreground hover:text-foreground hover:bg-muted flex items-center gap-1 rounded-none text-xs uppercase font-medium"
-                                  onClick={() => updateStatus(res.id, 'CANCELLED')}
-                                >
-                                  <X className="h-3.5 w-3.5" /> Cancelar
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="border-border text-muted-foreground hover:text-foreground hover:bg-muted flex items-center gap-1 rounded-none text-xs uppercase font-medium"
-                                  onClick={() => setReschedulingId(res.id)}
-                                >
-                                  <Clock className="h-3.5 w-3.5" /> Reagendar
-                                </Button>
-                              </>
+                          <div>
+                            <div className="font-semibold text-[#1E1D1A]">{res.customerName}</div>
+                            {res.notes && (
+                              <div className="text-[10px] text-[#7A6241] italic mt-1 font-light max-w-[180px] leading-relaxed truncate" title={res.notes}>
+                                <span className="font-bold not-italic mr-1">Nota:</span>"{res.notes}"
+                              </div>
                             )}
-                            {res.status === 'CONFIRMED' && (
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Servicio */}
+                      <td className="px-6 py-5">
+                        <div className="font-medium text-foreground text-xs md:text-sm">{service?.name || 'Desconocido'}</div>
+                        {variant && (
+                          <span className="inline-flex mt-1.5 px-2 py-0.5 text-[9px] bg-[#7A6241]/10 text-[#7A6241] border border-[#7A6241]/20 tracking-wider uppercase font-semibold">
+                            {variant.name} ({variant.price}€)
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Contacto */}
+                      <td className="px-6 py-5">
+                        <div className="flex items-center gap-2 text-muted-foreground font-mono text-xs">
+                          <Phone className="h-3.5 w-3.5 text-[#8A8172]" />
+                          {res.customerPhone}
+                        </div>
+                      </td>
+
+                      {/* Fecha y Hora */}
+                      <td className="px-6 py-5">
+                        <div className="flex flex-col text-left">
+                          <span className="font-semibold text-foreground text-xs uppercase tracking-wider">
+                            {new Date(res.date).toLocaleDateString('es-ES', {
+                              weekday: 'short',
+                              day: 'numeric',
+                              month: 'short'
+                            }).toUpperCase()}
+                          </span>
+                          <span className="text-[10px] text-[#7A6241] font-mono mt-0.5">
+                            {new Date(res.date).toLocaleTimeString('es-ES', {
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}h
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* Estado */}
+                      <td className="px-6 py-5">
+                        <span className={`px-2.5 py-1 text-[9px] tracking-widest font-bold border ${getStatusColor(res.status)}`}>
+                          {res.status}
+                        </span>
+                      </td>
+
+                      {/* Acciones */}
+                      <td className="px-6 py-5">
+                        <div className="flex gap-2">
+                          {(res.status === 'PENDING' || res.status === 'MODIFIED') && (
+                            <>
+                              <Button
+                                size="sm"
+                                className="bg-[#7A6241] hover:bg-[#1E1D1A] text-white flex items-center gap-1 rounded-none text-xs uppercase font-semibold tracking-wider px-3.5"
+                                onClick={() => updateStatus(res.id, 'CONFIRMED')}
+                              >
+                                <Check className="h-3.5 w-3.5" /> Confirmar
+                              </Button>
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="border-border text-muted-foreground hover:text-foreground hover:bg-muted flex items-center gap-1 rounded-none text-xs uppercase font-medium"
+                                className="border-border text-red-500 hover:bg-red-50 flex items-center gap-1 rounded-none text-xs uppercase font-semibold tracking-wider px-3.5"
                                 onClick={() => updateStatus(res.id, 'CANCELLED')}
                               >
                                 <X className="h-3.5 w-3.5" /> Cancelar
                               </Button>
-                            )}
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="border-border text-[#7A6241] hover:bg-muted flex items-center gap-1 rounded-none text-xs uppercase font-semibold tracking-wider px-3.5"
+                                onClick={() => {
+                                  setReschedulingId(res.id);
+                                  setNewDate(res.date);
+                                }}
+                              >
+                                <Clock className="h-3.5 w-3.5" /> Reagendar
+                              </Button>
+                            </>
+                          )}
+                          {res.status === 'CONFIRMED' && (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="border-border text-red-500 hover:bg-red-50 flex items-center gap-1 rounded-none text-xs uppercase font-semibold tracking-wider px-3.5"
+                                onClick={() => updateStatus(res.id, 'CANCELLED')}
+                              >
+                                <X className="h-3.5 w-3.5" /> Cancelar
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="border-border text-[#7A6241] hover:bg-muted flex items-center gap-1 rounded-none text-xs uppercase font-semibold tracking-wider px-3.5"
+                                onClick={() => {
+                                  setReschedulingId(res.id);
+                                  setNewDate(res.date);
+                                }}
+                              >
+                                <Clock className="h-3.5 w-3.5" /> Reagendar
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
             {reservations.filter(res => res.status !== 'CANCELLED').length === 0 && (
               <div className="text-center text-muted-foreground py-12 font-light">No hay reservas activas.</div>
             )}
+          </div>
+
+          {/* Dialog Modal for Rescheduling Citas */}
+          {reschedulingId && (
+            <div className="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+              <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onClick={() => { setReschedulingId(null); setNewDate(''); }} />
+                <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+                <div className="inline-block align-bottom bg-white text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full border border-[#ECE7DC] rounded-none p-8 animate-fade-in">
+                  <h3 className="text-sm font-bold text-[#1E1D1A] uppercase tracking-[0.25em] mb-4 font-serif pb-2 border-b border-[#ECE7DC]">Reagendar Cita</h3>
+                  
+                  {(() => {
+                    const res = reservations.find(r => r.id === reschedulingId);
+                    if (!res) return null;
+                    const service = services.find(s => s.id === res.serviceId);
+                    const variant = service?.variants?.find(v => v.id === res.variantId);
+                    return (
+                      <div className="space-y-4 mb-6">
+                        <p className="text-xs text-[#5C574F] font-light leading-relaxed">
+                          Elige la nueva fecha y hora para la reserva de <strong className="font-semibold text-[#1E1D1A]">{res.customerName}</strong>.
+                        </p>
+                        <div className="bg-[#FAF9F5] border border-[#ECE7DC] p-4 text-xs space-y-1.5 rounded-none">
+                          <div><span className="text-[#8A8172] font-medium uppercase tracking-wider text-[10px]">Servicio:</span> {service?.name} {variant && `(${variant.name})`}</div>
+                          <div>
+                            <span className="text-[#8A8172] font-medium uppercase tracking-wider text-[10px]">Fecha actual:</span> {new Date(res.date).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' })}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  <div className="space-y-2 mb-6">
+                    <label className="text-[10px] font-bold tracking-[0.15em] uppercase text-[#1E1D1A]">Nueva Fecha y Hora</label>
+                    <Input
+                      type="datetime-local"
+                      required
+                      className="bg-white border-border text-xs rounded-none h-11 w-full font-light"
+                      value={newDate ? newDate.slice(0, 16) : ''}
+                      onChange={(e) => setNewDate(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="flex gap-4">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="flex-grow border-border text-muted-foreground hover:text-foreground rounded-none uppercase text-[10px] tracking-widest font-semibold py-4"
+                      onClick={() => {
+                        setReschedulingId(null);
+                        setNewDate('');
+                      }}
+                    >
+                      Cancelar
+                    </Button>
+                    <Button
+                      type="button"
+                      className="flex-grow bg-[#1E1D1A] hover:bg-[#7A6241] text-white rounded-none uppercase text-[10px] tracking-widest font-semibold py-4"
+                      onClick={() => handleReschedule(reschedulingId)}
+                    >
+                      Confirmar
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
           </div>
         </>
       )}
@@ -610,6 +718,15 @@ export function AdminDashboard({ services, lookbookSlides, onServicesChange }: A
                       <div className="text-xs text-muted-foreground max-w-sm truncate mt-1" title={service.description}>
                         {service.description || 'Sin descripción'}
                       </div>
+                      {service.variants && service.variants.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {service.variants.map(v => (
+                            <span key={v.id} className="px-1.5 py-0.5 text-[9px] bg-[#FAF9F5] text-[#7A6241] border border-[#ECE7DC]">
+                              {v.name}: {v.price}€
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-5">
                       <span className="px-2 py-0.5 text-xs bg-[#FAF9F5] border border-[#ECE7DC] text-[#5C574F]">
@@ -617,10 +734,18 @@ export function AdminDashboard({ services, lookbookSlides, onServicesChange }: A
                       </span>
                     </td>
                     <td className="px-6 py-5 text-center text-muted-foreground font-mono text-xs">
-                      {service.duration} min
+                      {service.variants && service.variants.length > 0 ? (
+                        `${Math.min(...service.variants.map(v => v.duration))}-${Math.max(...service.variants.map(v => v.duration))} min`
+                      ) : (
+                        `${service.duration} min`
+                      )}
                     </td>
                     <td className="px-6 py-5 text-right font-serif font-semibold text-foreground text-base">
-                      {service.price}€
+                      {service.variants && service.variants.length > 0 ? (
+                        `Desde ${Math.min(...service.variants.map(v => v.price))}€`
+                      ) : (
+                        `${service.price}€`
+                      )}
                     </td>
                     <td className="px-6 py-5 text-center text-muted-foreground font-mono text-xs">
                       {service.steps?.length || 0}
@@ -776,7 +901,12 @@ export function AdminDashboard({ services, lookbookSlides, onServicesChange }: A
                       onChange={(e) => setFormCategory(e.target.value)}
                       className="w-full bg-white border border-border text-xs rounded-none h-10 px-3 text-foreground focus:outline-none focus:ring-1 focus:ring-ring focus:border-ring"
                     >
-                      <option value="hair">Cabello & Peinado</option>
+                      <option value="hair-cut">Cabello - Cortes</option>
+                      <option value="hair-style">Cabello - Peinados & Novias</option>
+                      <option value="hair-color">Cabello - Color & Mechas</option>
+                      <option value="hair-treatment">Cabello - Tratamientos & Botox</option>
+                      <option value="hair-straightening">Cabello - Alisados</option>
+                      <option value="hair-addon">Cabello - Adicionales</option>
                       <option value="makeup">Maquillaje & Mirada</option>
                       <option value="spa">Facial & Dermoestética</option>
                     </select>
@@ -883,6 +1013,82 @@ export function AdminDashboard({ services, lookbookSlides, onServicesChange }: A
                   ) : (
                     <div className="text-center py-6 border border-dashed border-[#ECE7DC] text-xs text-muted-foreground font-light italic">
                       No hay pasos descritos para este ritual capilar o estético.
+                    </div>
+                  )}
+                </div>
+
+                {/* Dynamic Variants Management */}
+                <div className="space-y-3.5 pt-4 border-t border-[#ECE7DC]">
+                  <div className="flex justify-between items-center">
+                    <label className="text-xs font-bold tracking-wider uppercase text-[#1E1D1A]">Variantes del Servicio (Opcional)</label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="border-[#BFA37A] text-[#7A6241] hover:bg-[#FAF9F5] rounded-none text-xs tracking-wider"
+                      onClick={() => setVariantsList([...variantsList, { name: '', price: 0, duration: 60 }])}
+                    >
+                      <Plus className="h-3.5 w-3.5 mr-1" /> Añadir Variante
+                    </Button>
+                  </div>
+                  
+                  {variantsList.length > 0 ? (
+                    <div className="space-y-2.5 max-h-[200px] overflow-y-auto pr-1">
+                      {variantsList.map((variant, idx) => (
+                        <div key={idx} className="flex gap-2 items-center">
+                          <Input
+                            value={variant.name}
+                            onChange={(e) => {
+                              const updated = [...variantsList];
+                              updated[idx] = { ...updated[idx], name: e.target.value };
+                              setVariantsList(updated);
+                            }}
+                            placeholder="Nombre (ej. Cabello Corto)"
+                            className="w-1/2 bg-white border-border text-xs rounded-none font-light"
+                            required
+                          />
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={variant.price}
+                            onChange={(e) => {
+                              const updated = [...variantsList];
+                              updated[idx] = { ...updated[idx], price: parseFloat(e.target.value) || 0 };
+                              setVariantsList(updated);
+                            }}
+                            placeholder="Precio (€)"
+                            className="w-1/4 bg-white border-border text-xs rounded-none font-light"
+                            required
+                          />
+                          <Input
+                            type="number"
+                            min="5"
+                            value={variant.duration}
+                            onChange={(e) => {
+                              const updated = [...variantsList];
+                              updated[idx] = { ...updated[idx], duration: parseInt(e.target.value) || 0 };
+                              setVariantsList(updated);
+                            }}
+                            placeholder="Duración (min)"
+                            className="w-1/4 bg-white border-border text-xs rounded-none font-light"
+                            required
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="border-[#ECE7DC] text-[#8A8172] hover:text-red-600 rounded-none h-10 w-10 p-0"
+                            onClick={() => setVariantsList(variantsList.filter((_, i) => i !== idx))}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-6 border border-dashed border-[#ECE7DC] text-xs text-muted-foreground font-light italic">
+                      No hay variantes definidas. El servicio usará el precio y duración base.
                     </div>
                   )}
                 </div>

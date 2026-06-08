@@ -1,5 +1,13 @@
 export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
+export interface ServiceVariant {
+  id: string;
+  name: string;
+  price: number;
+  duration: number;
+  serviceId: string;
+}
+
 export interface ServiceItem {
   id: string;
   name: string;
@@ -9,6 +17,7 @@ export interface ServiceItem {
   imageUrl: string | null;
   category: string;
   steps: string[];
+  variants?: ServiceVariant[];
 }
 
 export interface LookbookSlide {

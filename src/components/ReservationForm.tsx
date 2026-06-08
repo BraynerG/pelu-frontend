@@ -25,17 +25,31 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
+import type { ServiceVariant } from '@/services/api';
+
 interface ReservationFormProps {
   isOpen: boolean;
   onClose: () => void;
   serviceId: string;
   serviceName: string;
+  initialVariantId?: string | null;
+  variants?: ServiceVariant[];
 }
 
-export function ReservationForm({ isOpen, onClose, serviceId, serviceName }: ReservationFormProps) {
+export function ReservationForm({ 
+  isOpen, 
+  onClose, 
+  serviceId, 
+  serviceName, 
+  initialVariantId,
+  variants = [] 
+}: ReservationFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(
+    initialVariantId || (variants.length > 0 ? variants[0].id : null)
+  );
 
   const { user, isAuthenticated } = useAuth();
 
@@ -66,6 +80,7 @@ export function ReservationForm({ isOpen, onClose, serviceId, serviceName }: Res
         body: JSON.stringify({
           ...data,
           serviceId,
+          variantId: selectedVariantId,
         }),
       });
 
@@ -95,6 +110,17 @@ export function ReservationForm({ isOpen, onClose, serviceId, serviceName }: Res
           <DialogTitle className="text-xl font-bold text-foreground uppercase tracking-wide">Reservar Servicio</DialogTitle>
           <DialogDescription className="text-muted-foreground font-light">
             Estás reservando: <span className="font-semibold text-foreground">{serviceName}</span>
+            {(() => {
+              const activeVariant = variants.find(v => v.id === selectedVariantId);
+              if (activeVariant) {
+                return (
+                  <span className="block mt-1.5 text-xs text-[#7A6241]">
+                    Opción: <strong className="font-semibold text-[#1E1D1A]">{activeVariant.name}</strong> ({activeVariant.price}€ | {activeVariant.duration} min)
+                  </span>
+                );
+              }
+              return null;
+            })()}
           </DialogDescription>
         </DialogHeader>
 
@@ -104,6 +130,29 @@ export function ReservationForm({ isOpen, onClose, serviceId, serviceName }: Res
           </div>
         ) : (
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 py-4">
+            {variants.length > 0 && (
+              <div className="space-y-2">
+                <Label className="text-foreground font-medium text-sm">Opción / Tipo de Cabello</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  {variants.map((v) => (
+                    <button
+                      key={v.id}
+                      type="button"
+                      onClick={() => setSelectedVariantId(v.id)}
+                      className={`px-3 py-2 text-xs border tracking-wider transition-all rounded-none text-left flex justify-between items-center ${
+                        selectedVariantId === v.id
+                          ? 'border-[#7A6241] bg-[#7A6241]/5 text-[#7A6241] font-semibold'
+                          : 'border-border text-muted-foreground hover:border-[#1E1D1A] hover:text-foreground'
+                      }`}
+                    >
+                      <span>{v.name}</span>
+                      <span className="font-serif font-bold">{v.price}€</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="customerName" className="text-foreground font-medium text-sm">Nombre</Label>
               <Input
