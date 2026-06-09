@@ -4,6 +4,8 @@ import { API_URL, type ServiceItem, type LookbookSlide } from '@/services/api';
 import { Clock, Check, X, Phone, User, Calendar, FileText, Plus, Pencil, Trash2, Sparkles, Search, MessageSquare } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/context/AuthContext';
+import { ImageUpload } from '@/components/ImageUpload';
+
 
 interface Reservation {
   id: string;
@@ -1174,17 +1176,15 @@ export function AdminDashboard({ services, lookbookSlides, onServicesChange }: A
                   />
                 </div>
 
-                {/* Image URL */}
+                {/* Image Upload */}
                 <div className="space-y-2">
-                  <label className="text-xs font-bold tracking-wider uppercase text-[#1E1D1A]">URL de Imagen de Portada</label>
-                  <Input
+                  <ImageUpload
+                    label="Imagen de Portada"
                     value={formImageUrl}
-                    onChange={(e) => setFormImageUrl(e.target.value)}
-                    placeholder="https://ejemplo.com/imagenes/servicio.jpg"
-                    className="bg-white border-border text-xs rounded-none"
+                    onChange={setFormImageUrl}
                   />
                   <p className="text-[10px] text-muted-foreground font-light">
-                    Opcional. Si se deja en blanco, se utilizará una imagen por defecto elegante.
+                    Opcional. Carga una foto representativa del servicio. Si se deja en blanco, se utilizará una imagen por defecto elegante.
                   </p>
                 </div>
 
@@ -1400,15 +1400,12 @@ export function AdminDashboard({ services, lookbookSlides, onServicesChange }: A
                   />
                 </div>
 
-                {/* Image URL */}
+                {/* Image Upload */}
                 <div className="space-y-2">
-                  <label className="text-xs font-bold tracking-wider uppercase text-[#1E1D1A]">URL de Imagen de Fondo</label>
-                  <Input
-                    required
+                  <ImageUpload
+                    label="Imagen de Fondo"
                     value={lookbookUrl}
-                    onChange={(e) => setLookbookUrl(e.target.value)}
-                    placeholder="https://ejemplo.com/imagenes/slider1.jpg"
-                    className="bg-white border-border text-xs rounded-none"
+                    onChange={setLookbookUrl}
                   />
                 </div>
 
