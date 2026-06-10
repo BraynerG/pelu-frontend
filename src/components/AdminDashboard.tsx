@@ -409,7 +409,9 @@ export function AdminDashboard({ services, lookbookSlides, onServicesChange }: A
   };
 
   const filteredReservations = reservations.filter((res) => {
-    if (statusFilter !== 'ALL' && res.status !== statusFilter) {
+    if (statusFilter === 'ALL') {
+      if (res.status === 'CANCELLED') return false;
+    } else if (res.status !== statusFilter) {
       return false;
     }
     if (searchQuery.trim() !== '') {
@@ -567,7 +569,7 @@ export function AdminDashboard({ services, lookbookSlides, onServicesChange }: A
                   CANCELLED: 'Canceladas',
                 }[status];
                 
-                const count = reservations.filter(r => status === 'ALL' || r.status === status).length;
+                const count = reservations.filter(r => status === 'ALL' ? r.status !== 'CANCELLED' : r.status === status).length;
 
                 return (
                   <button
