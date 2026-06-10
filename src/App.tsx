@@ -13,7 +13,9 @@ import {
   ShieldCheck, 
   CheckCircle2,
   X,
-  Heart
+  Heart,
+  Palette,
+  Eye
 } from 'lucide-react';
 import { ReservationForm } from '@/components/ReservationForm';
 import { AdminDashboard } from '@/components/AdminDashboard';
@@ -134,13 +136,6 @@ function App() {
             </span>
           </div>
           <nav className="flex items-center gap-4">
-            <Button 
-              variant="ghost" 
-              className="text-[#5C574F] hover:text-[#1E1D1A] font-light text-sm tracking-wider"
-              onClick={() => setCurrentView('catalog')}
-            >
-              INICIO
-            </Button>
             {isAdmin && (
               <Button 
                 variant="outline" 
@@ -322,8 +317,8 @@ function App() {
               </p>
             </div>
 
-            {/* Category Filter Tabs */}
-            <div className="flex justify-center border-b border-[#ECE7DC] mb-12 overflow-x-auto whitespace-nowrap scrollbar-none">
+            {/* Category Filter Tabs - Desktop */}
+            <div className="hidden md:flex justify-center border-b border-[#ECE7DC] mb-12 overflow-x-auto whitespace-nowrap scrollbar-none">
               <div className="flex gap-8">
                 {[
                   { id: 'all', label: 'TODOS' },
@@ -353,6 +348,43 @@ function App() {
               </div>
             </div>
 
+            {/* Category Filter Tabs - Mobile */}
+            <div className="relative md:hidden mb-8 w-full">
+              {/* Fade overlays to indicate scrolling */}
+              <div className="absolute left-0 top-0 bottom-0 w-6 bg-gradient-to-r from-[#FAF9F5] to-transparent pointer-events-none z-10" />
+              <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-[#FAF9F5] to-transparent pointer-events-none z-10" />
+              
+              <div className="flex gap-2 overflow-x-auto px-4 py-2 scrollbar-none snap-x snap-mandatory">
+                {[
+                  { id: 'all', label: 'TODOS', icon: Sparkles },
+                  { id: 'hair-cut', label: 'CORTES', icon: Scissors },
+                  { id: 'hair-style', label: 'PEINADOS', icon: Heart },
+                  { id: 'hair-color', label: 'COLOR', icon: Palette },
+                  { id: 'hair-treatment', label: 'TRATAMIENTOS', icon: Sparkles },
+                  { id: 'hair-straightening', label: 'ALISADOS', icon: Scissors },
+                  { id: 'makeup', label: 'MAQUILLAJE', icon: Eye },
+                  { id: 'spa', label: 'SPA & FACIAL', icon: Heart }
+                ].map((tab) => {
+                  const Icon = tab.icon;
+                  const isActive = activeTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id as any)}
+                      className={`flex items-center gap-2 px-4 py-3 text-[10px] tracking-wider font-semibold border transition-all duration-300 rounded-none shrink-0 snap-align-start min-h-[44px] ${
+                        isActive
+                          ? 'border-[#7A6241] bg-[#7A6241] text-white shadow-sm'
+                          : 'border-[#ECE7DC] bg-white text-[#534C43]'
+                      }`}
+                    >
+                      <Icon className={`h-3.5 w-3.5 ${isActive ? 'text-white' : 'text-[#7A6241]'}`} />
+                      <span>{tab.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             {loading && (
               <div className="text-center py-20 text-[#534C43] font-light tracking-widest animate-pulse">
                 Consultando el libro de rituales...
@@ -372,8 +404,8 @@ function App() {
               </div>
             )}
 
-            {/* Boutique Cards Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {/* Boutique Cards Grid (Desktop) */}
+            <div className="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {getFilteredServices().map((service) => {
                 const isFav = favorites.includes(service.id);
                 return (
@@ -469,6 +501,102 @@ function App() {
                       >
                         Reservar
                       </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Compact Service List (Mobile) */}
+            <div className="flex flex-col gap-4 md:hidden">
+              {getFilteredServices().map((service) => {
+                const isFav = favorites.includes(service.id);
+                return (
+                  <div 
+                    key={service.id} 
+                    className="bg-white border border-[#ECE7DC] p-4 flex gap-4 hover:border-[#7A6241]/50 transition-all duration-300 luxury-shadow-sm"
+                  >
+                    {/* Left: Square Thumbnail image */}
+                    <div 
+                      className="relative w-24 h-24 shrink-0 bg-[#FAF9F5] overflow-hidden cursor-pointer"
+                      onClick={() => handleOpenQuickView(service)}
+                    >
+                      <img 
+                        src={service.imageUrl || '/images/hero_salon.webp'} 
+                        alt={service.name}
+                        loading="lazy"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = '/images/hero_salon.webp';
+                        }}
+                      />
+                      {/* Favorite Icon */}
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleFavorite(service.id);
+                        }}
+                        aria-label={isFav ? "Quitar de favoritos" : "Guardar en favoritos"}
+                        title={isFav ? "Quitar de favoritos" : "Guardar en favoritos"}
+                        className="absolute top-1 right-1 h-7 w-7 bg-white/80 hover:bg-white text-[#1E1D1A] flex items-center justify-center rounded-full transition-all duration-300 z-10 shadow-sm"
+                      >
+                        <Heart className={`h-3.5 w-3.5 transition-colors ${isFav ? 'fill-[#C0392B] text-[#C0392B]' : 'text-[#534C43]'}`} />
+                      </button>
+                    </div>
+
+                    {/* Right: Info & CTA */}
+                    <div className="flex-grow flex flex-col justify-between min-w-0">
+                      <div>
+                        <div 
+                          className="flex justify-between items-start gap-2 cursor-pointer"
+                          onClick={() => handleOpenQuickView(service)}
+                        >
+                          <h3 className="text-sm font-serif font-semibold text-[#1E1D1A] leading-tight truncate">
+                            {service.name}
+                          </h3>
+                          <span className="text-sm font-bold font-serif text-[#1E1D1A] shrink-0">
+                            {service.variants && service.variants.length > 0 ? (
+                              `Desde ${Math.min(...service.variants.map(v => v.price))}€`
+                            ) : (
+                              `${service.price}€`
+                            )}
+                          </span>
+                        </div>
+                        <p 
+                          className="text-[11px] text-[#5C574F] font-light leading-snug line-clamp-2 mt-1 cursor-pointer"
+                          onClick={() => handleOpenQuickView(service)}
+                        >
+                          {service.description || 'Una experiencia única diseñada a medida para potenciar tu imagen.'}
+                        </p>
+                      </div>
+
+                      {/* Info Row & Buttons */}
+                      <div className="pt-2 border-t border-[#FAF9F5] flex justify-between items-center mt-2">
+                        <div className="flex items-center gap-1.5 text-[9px] text-[#534C43] uppercase tracking-wider font-semibold">
+                          <Clock className="h-3 w-3 text-[#7A6241]" />
+                          <span>
+                            {service.variants && service.variants.length > 0 ? (
+                              `${Math.min(...service.variants.map(v => v.duration))}-${Math.max(...service.variants.map(v => v.duration))} MIN`
+                            ) : (
+                              `${service.duration} MIN`
+                            )}
+                          </span>
+                        </div>
+                        <div className="flex gap-2">
+                          <button 
+                            className="py-1.5 px-3 text-[9px] tracking-wider font-bold border border-[#ECE7DC] hover:border-[#1E1D1A] text-[#5C574F] hover:text-[#1E1D1A] transition-all uppercase rounded-none"
+                            onClick={() => handleOpenQuickView(service)}
+                          >
+                            Ver
+                          </button>
+                          <button 
+                            className="py-1.5 px-3 text-[9px] tracking-wider font-bold bg-[#1E1D1A] hover:bg-[#7A6241] text-white transition-all uppercase rounded-none"
+                            onClick={() => handleOpenModal(service, service.variants && service.variants.length > 0 ? service.variants[0].id : null)}
+                          >
+                            Reservar
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 );
