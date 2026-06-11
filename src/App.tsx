@@ -167,10 +167,13 @@ function AppContent() {
   );
 }
 
+import { Toaster } from 'sonner';
+
 function App() {
   return (
     <CatalogProvider>
       <AppContent />
+      <Toaster position="top-center" richColors />
     </CatalogProvider>
   );
 }

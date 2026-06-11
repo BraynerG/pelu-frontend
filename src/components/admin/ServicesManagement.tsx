@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
@@ -42,7 +43,7 @@ export function ServicesManagement({ services, onServicesChange }: ServicesManag
       onServicesChange?.();
     },
     onError: (err: Error) => {
-      alert(err.message);
+      toast.error(err.message);
     },
   });
 
@@ -67,13 +68,22 @@ export function ServicesManagement({ services, onServicesChange }: ServicesManag
       onServicesChange?.();
     },
     onError: (err: Error) => {
-      alert(err.message);
+      toast.error(err.message);
     },
   });
 
   const handleDeleteService = (id: string) => {
-    if (!window.confirm('¿Estás seguro de que deseas eliminar este servicio?')) return;
-    deleteMutation.mutate(id);
+    toast('¿Eliminar este servicio de autor?', {
+      description: 'Esta acción no se puede deshacer.',
+      action: {
+        label: 'Eliminar',
+        onClick: () => deleteMutation.mutate(id),
+      },
+      cancel: {
+        label: 'Cancelar',
+        onClick: () => {},
+      },
+    });
   };
 
   const handleSaveService = (payload: any) => {

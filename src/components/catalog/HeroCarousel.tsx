@@ -1,4 +1,5 @@
 import { Sparkles, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
+import { optimizeCloudinaryUrl } from '@/lib/utils';
 import type { LookbookSlide } from '@/services/api';
 
 interface HeroCarouselProps {
@@ -31,10 +32,10 @@ export function HeroCarousel({
           }`}
         >
           <img 
-            src={slide.url} 
+            src={optimizeCloudinaryUrl(slide.url)} 
             alt={slide.title}
             loading={idx === 0 ? "eager" : "lazy"}
-            {...({ fetchpriority: idx === 0 ? "high" : "low" } as any)}
+            fetchPriority={idx === 0 ? "high" : "low"}
             className="w-full h-full object-cover object-center transform scale-105 transition-transform duration-[6000ms] ease-out"
           />
         </div>

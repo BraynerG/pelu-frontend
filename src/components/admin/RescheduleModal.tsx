@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import type { ServiceItem } from '@/services/api';
 import type { Reservation } from '@/hooks/useReservations';
@@ -25,6 +26,17 @@ export function RescheduleModal({
   onClose,
   handleReschedule,
 }: RescheduleModalProps) {
+  useEffect(() => {
+    if (reschedulingId) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [reschedulingId]);
+
   const getNext14Days = () => {
     const days = [];
     const today = new Date();
@@ -75,13 +87,16 @@ export function RescheduleModal({
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-      <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+      <div className="flex items-end sm:items-center justify-center min-h-screen p-0 sm:p-4 text-center">
+        {/* Backdrop Layer */}
         <div 
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity" 
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300" 
+          aria-hidden="true"
           onClick={onClose} 
         />
-        <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-        <div className="inline-block align-bottom bg-white text-left overflow-hidden shadow-2xl transform transition-all w-full h-[90vh] max-h-[90vh] sm:h-auto sm:max-h-[90vh] sm:my-8 sm:align-middle sm:max-w-md sm:w-full border border-[#ECE7DC] rounded-t-[20px] sm:rounded-none p-6 sm:p-8 animate-fade-in fixed bottom-0 left-0 right-0 sm:relative sm:bottom-auto sm:left-auto sm:right-auto flex flex-col">
+        
+        {/* Modal Content Panel */}
+        <div className="relative bg-white text-left overflow-hidden shadow-2xl transform transition-all w-full h-[90vh] max-h-[90vh] sm:h-auto sm:max-h-[90vh] sm:max-w-md sm:w-full border border-[#ECE7DC] rounded-t-[20px] sm:rounded-none p-6 sm:p-8 animate-fade-in flex flex-col z-10">
           {/* Mobile drag handle */}
           <div className="w-12 h-1 bg-[#ECE7DC] rounded-full mx-auto mb-4 sm:hidden shrink-0" />
           

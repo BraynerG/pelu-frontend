@@ -1,9 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ImageUpload } from '@/components/ImageUpload';
 import { X, Plus } from 'lucide-react';
 import type { ServiceItem } from '@/services/api';
+
+const serviceSchema = z.object({
+  name: z.string().min(1, { message: 'El nombre es obligatorio' }),
+  description: z.string().optional(),
+  price: z.coerce.number().min(0, { message: 'El precio debe ser válido' }),
+  duration: z.coerce.number().min(5, { message: 'Mínimo 5 min' }),
+  imageUrl: z.string().optional(),
+  category: z.string().min(1, { message: 'Requerido' }),
+});
+
+type ServiceFormValues = z.infer<typeof serviceSchema>;
 
 interface ServiceFormModalProps {
   isOpen: boolean;
@@ -18,67 +33,89 @@ export function ServiceFormModal({
   onClose,
   onSave,
 }: ServiceFormModalProps) {
-  const [formName, setFormName] = useState('');
-  const [formDescription, setFormDescription] = useState('');
-  const [formPrice, setFormPrice] = useState('');
-  const [formDuration, setFormDuration] = useState('');
-  const [formImageUrl, setFormImageUrl] = useState('');
-  const [formCategory, setFormCategory] = useState('hair-cut');
+  const form = useForm<ServiceFormValues>({
+    resolver: zodResolver(serviceSchema) as any,
+    defaultValues: {
+      name: '',
+      description: '',
+      price: 0,
+      duration: 30,
+      imageUrl: '',
+      category: 'hair-cut',
+    },
+  });
+
   const [stepsList, setStepsList] = useState<string[]>([]);
   const [variantsList, setVariantsList] = useState<{ id?: string; name: string; price: number; duration: number }[]>([]);
 
   useEffect(() => {
-    if (editingService) {
-      setFormName(editingService.name);
-      setFormDescription(editingService.description || '');
-      setFormPrice(editingService.price.toString());
-      setFormDuration(editingService.duration.toString());
-      setFormImageUrl(editingService.imageUrl || '');
-      setFormCategory(editingService.category);
-      setStepsList(editingService.steps || []);
-      setVariantsList(editingService.variants || []);
+    if (isOpen) {
+      if (editingService) {
+        form.reset({
+          name: editingService.name,
+          description: editingService.description || '',
+          price: editingService.price,
+          duration: editingService.duration,
+          imageUrl: editingService.imageUrl || '',
+          category: editingService.category,
+        });
+        setStepsList(editingService.steps || []);
+        setVariantsList(editingService.variants || []);
+      } else {
+        form.reset({
+          name: '',
+          description: '',
+          price: 0,
+          duration: 30,
+          imageUrl: '',
+          category: 'hair-cut',
+        });
+        setStepsList([]);
+        setVariantsList([]);
+      }
+    }
+  }, [editingService, isOpen, form]);
+
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
     } else {
-      setFormName('');
-      setFormDescription('');
-      setFormPrice('');
-      setFormDuration('');
-      setFormImageUrl('');
-      setFormCategory('hair-cut');
-      setStepsList([]);
-      setVariantsList([]);
+      document.body.style.overflow = '';
     }
-  }, [editingService, isOpen]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formName || !formPrice || !formDuration) {
-      alert('Nombre, precio y duración son obligatorios');
-      return;
-    }
-
-    const payload = {
-      name: formName,
-      description: formDescription,
-      price: parseFloat(formPrice),
-      duration: parseInt(formDuration),
-      imageUrl: formImageUrl || null,
-      category: formCategory,
-      steps: stepsList.filter((s) => s.trim() !== ''),
-      variants: variantsList.map((v) => ({
-        name: v.name,
-        price: typeof v.price === 'string' ? parseFloat(v.price) : v.price,
-        duration: typeof v.duration === 'string' ? parseInt(v.duration) : v.duration,
-      })),
+    return () => {
+      document.body.style.overflow = '';
     };
+  }, [isOpen]);
 
-    await onSave(payload);
+  const onSubmit = async (data: ServiceFormValues) => {
+    try {
+      const payload = {
+        name: data.name,
+        description: data.description,
+        price: data.price,
+        duration: data.duration,
+        imageUrl: data.imageUrl || null,
+        category: data.category,
+        steps: stepsList.filter((s) => s.trim() !== ''),
+        variants: variantsList.map((v) => ({
+          name: v.name,
+          price: typeof v.price === 'string' ? parseFloat(v.price) : v.price,
+          duration: typeof v.duration === 'string' ? parseInt(v.duration) : v.duration,
+        })),
+      };
+      await onSave(payload);
+    } catch (err) {
+      toast.error('Error al guardar el servicio');
+    }
   };
+
+  const imageUrlValue = form.watch('imageUrl');
 
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-      <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+      <div className="flex items-end sm:items-center justify-center min-h-screen p-0 sm:p-4 text-center">
         {/* Backdrop Layer */}
         <div 
           className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300" 
@@ -86,10 +123,8 @@ export function ServiceFormModal({
           onClick={onClose}
         />
 
-        <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-
         {/* Modal Content Panel */}
-        <div className="inline-block align-bottom bg-white text-left overflow-hidden shadow-2xl transform transition-all w-full h-[90vh] max-h-[90vh] sm:h-auto sm:max-h-[90vh] sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full border border-[#ECE7DC] rounded-t-[20px] sm:rounded-none animate-fade-in fixed bottom-0 left-0 right-0 sm:relative sm:bottom-auto sm:left-auto sm:right-auto flex flex-col">
+        <div className="relative bg-white text-left overflow-hidden shadow-2xl transform transition-all w-full h-[90vh] max-h-[90vh] sm:h-auto sm:max-h-[90vh] sm:max-w-2xl sm:w-full border border-[#ECE7DC] rounded-t-[20px] sm:rounded-none animate-fade-in flex flex-col z-10">
           {/* Mobile drag handle */}
           <div className="w-12 h-1 bg-[#ECE7DC] rounded-full mx-auto mt-4 sm:hidden shrink-0" />
           
@@ -98,6 +133,7 @@ export function ServiceFormModal({
               {editingService ? 'Editar Servicio de Autor' : 'Nuevo Servicio de Autor'}
             </h3>
             <button 
+              type="button"
               onClick={onClose}
               className="h-8 w-8 text-[#8A8172] hover:text-[#1E1D1A] flex items-center justify-center transition-colors"
             >
@@ -105,27 +141,27 @@ export function ServiceFormModal({
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="flex flex-col flex-grow min-h-0 overflow-hidden sm:block sm:h-auto sm:overflow-visible">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-grow min-h-0 overflow-hidden">
             <div className="p-6 sm:p-8 space-y-6 overflow-y-auto flex-grow min-h-0">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Service Name */}
                 <div className="space-y-2">
                   <label className="text-xs font-bold tracking-wider uppercase text-[#1E1D1A]">Nombre del Ritual</label>
                   <Input
-                    required
-                    value={formName}
-                    onChange={(e) => setFormName(e.target.value)}
+                    {...form.register('name')}
                     placeholder="Ej. Balayage Signature Gold"
                     className="bg-white border-border text-xs rounded-none"
                   />
+                  {form.formState.errors.name && <p className="text-red-500 text-xs">{form.formState.errors.name.message}</p>}
                 </div>
 
                 {/* Category */}
                 <div className="space-y-2">
                   <label className="text-xs font-bold tracking-wider uppercase text-[#1E1D1A]">Categoría</label>
                   <select
-                    value={formCategory}
-                    onChange={(e) => setFormCategory(e.target.value)}
+                    id="service-category"
+                    aria-label="Categoría del servicio"
+                    {...form.register('category')}
                     className="w-full bg-white border border-border text-xs rounded-none h-10 px-3 text-foreground focus:outline-none focus:ring-1 focus:ring-ring focus:border-ring"
                   >
                     <option value="hair-cut">Cabello - Cortes</option>
@@ -137,35 +173,34 @@ export function ServiceFormModal({
                     <option value="makeup">Maquillaje & Mirada</option>
                     <option value="spa">Facial & Dermoestética</option>
                   </select>
+                  {form.formState.errors.category && <p className="text-red-500 text-xs">{form.formState.errors.category.message}</p>}
                 </div>
 
                 {/* Price */}
                 <div className="space-y-2">
                   <label className="text-xs font-bold tracking-wider uppercase text-[#1E1D1A]">Precio (€)</label>
                   <Input
-                    required
                     type="number"
                     min="0"
                     step="0.01"
-                    value={formPrice}
-                    onChange={(e) => setFormPrice(e.target.value)}
+                    {...form.register('price')}
                     placeholder="Ej. 85.00"
                     className="bg-white border-border text-xs rounded-none"
                   />
+                  {form.formState.errors.price && <p className="text-red-500 text-xs">{form.formState.errors.price.message}</p>}
                 </div>
 
                 {/* Duration */}
                 <div className="space-y-2">
                   <label className="text-xs font-bold tracking-wider uppercase text-[#1E1D1A]">Duración (minutos)</label>
                   <Input
-                    required
                     type="number"
                     min="5"
-                    value={formDuration}
-                    onChange={(e) => setFormDuration(e.target.value)}
+                    {...form.register('duration')}
                     placeholder="Ej. 60"
                     className="bg-white border-border text-xs rounded-none"
                   />
+                  {form.formState.errors.duration && <p className="text-red-500 text-xs">{form.formState.errors.duration.message}</p>}
                 </div>
               </div>
 
@@ -174,8 +209,7 @@ export function ServiceFormModal({
                 <label className="text-xs font-bold tracking-wider uppercase text-[#1E1D1A]">Descripción del Servicio</label>
                 <textarea
                   rows={3}
-                  value={formDescription}
-                  onChange={(e) => setFormDescription(e.target.value)}
+                  {...form.register('description')}
                   placeholder="Describe los beneficios principales, texturas o resultados de este ritual..."
                   className="w-full bg-white border border-border text-xs rounded-none p-3 text-foreground focus:outline-none focus:ring-1 focus:ring-ring focus:border-ring font-light leading-relaxed"
                 />
@@ -185,12 +219,13 @@ export function ServiceFormModal({
               <div className="space-y-2">
                 <ImageUpload
                   label="Imagen de Portada"
-                  value={formImageUrl}
-                  onChange={setFormImageUrl}
+                  value={imageUrlValue || ''}
+                  onChange={(val) => form.setValue('imageUrl', val, { shouldValidate: true })}
                 />
                 <p className="text-[10px] text-muted-foreground font-light">
                   Opcional. Carga una foto representativa del servicio. Si se deja en blanco, se utilizará una imagen por defecto elegante.
                 </p>
+                {form.formState.errors.imageUrl && <p className="text-red-500 text-xs">{form.formState.errors.imageUrl.message}</p>}
               </div>
 
               {/* Dynamic Steps Management */}
@@ -331,9 +366,10 @@ export function ServiceFormModal({
               </Button>
               <Button 
                 type="submit"
+                disabled={form.formState.isSubmitting}
                 className="flex-grow bg-[#1E1D1A] hover:bg-[#7A6241] text-white rounded-none uppercase text-xs tracking-wider font-semibold py-3.5 h-auto flex items-center justify-center"
               >
-                Guardar Ritual
+                {form.formState.isSubmitting ? 'Guardando...' : 'Guardar Ritual'}
               </Button>
             </div>
           </form>

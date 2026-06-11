@@ -1,5 +1,7 @@
 import { Heart, Clock, Star } from 'lucide-react';
 import { useCatalog } from '@/context/CatalogContext';
+import { Skeleton } from '@/components/ui/skeleton';
+import { optimizeCloudinaryUrl } from '@/lib/utils';
 import type { ServiceItem } from '@/services/api';
 import type { CategoryTabId } from './CategoryTabs';
 
@@ -23,8 +25,25 @@ export function ServiceCardGrid({
 
   if (loading) {
     return (
-      <div className="text-center py-20 text-[#534C43] font-light tracking-widest animate-pulse">
-        Consultando el libro de rituales...
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        {[1, 2, 3, 4, 5, 6].map((i) => (
+          <div key={i} className="flex flex-col gap-4 border border-[#ECE7DC] p-4 bg-white luxury-shadow-sm">
+            <Skeleton className="w-full aspect-[4/3] rounded-none" />
+            <div className="space-y-2 flex-grow mt-2">
+              <Skeleton className="h-6 w-3/4 rounded-none" />
+              <Skeleton className="h-4 w-full rounded-none" />
+              <Skeleton className="h-4 w-5/6 rounded-none" />
+            </div>
+            <div className="flex justify-between items-center pt-4">
+              <Skeleton className="h-4 w-1/4 rounded-none" />
+              <Skeleton className="h-6 w-1/4 rounded-none" />
+            </div>
+            <div className="flex gap-2 pt-2">
+              <Skeleton className="h-10 flex-1 rounded-none" />
+              <Skeleton className="h-10 flex-1 rounded-none" />
+            </div>
+          </div>
+        ))}
       </div>
     );
   }
@@ -72,7 +91,7 @@ export function ServiceCardGrid({
                 onClick={() => handleOpenQuickView(service)}
               >
                 <img 
-                  src={service.imageUrl || '/images/hero_salon.webp'} 
+                  src={optimizeCloudinaryUrl(service.imageUrl || '/images/hero_salon.webp')} 
                   alt={service.name}
                   loading="lazy"
                   width={400}
@@ -175,7 +194,7 @@ export function ServiceCardGrid({
                 onClick={() => handleOpenQuickView(service)}
               >
                 <img 
-                  src={service.imageUrl || '/images/hero_salon.webp'} 
+                  src={optimizeCloudinaryUrl(service.imageUrl || '/images/hero_salon.webp')} 
                   alt={service.name}
                   loading="lazy"
                   className="w-full h-full object-cover"

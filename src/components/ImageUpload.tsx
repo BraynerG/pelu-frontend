@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Upload, X, Loader2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { API_URL } from '@/services/api';
+import { optimizeCloudinaryUrl } from '@/lib/utils';
 
 interface ImageUploadProps {
   value: string;
@@ -142,7 +143,7 @@ export function ImageUpload({ value, onChange, label }: ImageUploadProps) {
         ) : value ? (
           <div className="relative w-full h-48 overflow-hidden group">
             <img 
-              src={value} 
+              src={optimizeCloudinaryUrl(value)} 
               alt="Preview" 
               className="w-full h-full object-cover"
             />
