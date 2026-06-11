@@ -15,7 +15,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { API_URL, getOccupiedSlots, type OccupiedSlot } from '@/services/api';
+import { API_URL, type OccupiedSlot } from '@/services/api';
+import { useOccupiedSlotsQuery } from '@/hooks/useQueries';
 
 const formSchema = z.object({
   customerName: z.string().min(2, { message: 'El nombre debe tener al menos 2 caracteres' }),
@@ -57,8 +58,7 @@ export function ReservationForm({
   const { user, isAuthenticated } = useAuth();
 
   // Custom states for date-time slot selection
-  const [occupiedSlots, setOccupiedSlots] = useState<OccupiedSlot[]>([]);
-  const [loadingOccupied, setLoadingOccupied] = useState(false);
+  const { data: occupiedSlots = [], isLoading: loadingOccupied } = useOccupiedSlotsQuery(isOpen);
   const [selectedDay, setSelectedDay] = useState<string>('');
   const [selectedTime, setSelectedTime] = useState<string>('');
 
@@ -97,12 +97,6 @@ export function ReservationForm({
 
   useEffect(() => {
     if (isOpen) {
-      setLoadingOccupied(true);
-      getOccupiedSlots()
-        .then((data) => setOccupiedSlots(data))
-        .catch((err) => console.error('Error fetching occupied slots:', err))
-        .finally(() => setLoadingOccupied(false));
-      
       setSelectedDay('');
       setSelectedTime('');
       setCurrentStepIdx(0);
