@@ -1,33 +1,7 @@
 export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
-export interface ServiceVariant {
-  id: string;
-  name: string;
-  price: number;
-  duration: number;
-  serviceId: string;
-}
-
-export interface ServiceItem {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  duration: number;
-  imageUrl: string | null;
-  category: string;
-  steps: string[];
-  variants?: ServiceVariant[];
-}
-
-export interface LookbookSlide {
-  id: string;
-  url: string;
-  title: string;
-  subtitle: string;
-  tag: string;
-  accent?: string | null;
-}
+import type { ServiceVariant, ServiceItem, LookbookSlide, OccupiedSlot } from '../types';
+export type { ServiceVariant, ServiceItem, LookbookSlide, OccupiedSlot };
 
 export const getServices = async (): Promise<ServiceItem[]> => {
   const response = await fetch(`${API_URL}/services`);
@@ -52,11 +26,6 @@ export const getLookbookSlides = async (): Promise<LookbookSlide[]> => {
   }
   return result.data;
 };
-
-export interface OccupiedSlot {
-  date: string;
-  duration: number;
-}
 
 export const getOccupiedSlots = async (): Promise<OccupiedSlot[]> => {
   const response = await fetch(`${API_URL}/reservations/occupied`);

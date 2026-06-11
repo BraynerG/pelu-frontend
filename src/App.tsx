@@ -1,7 +1,7 @@
-import { useState } from 'react';
 import { CatalogProvider, useCatalog } from './context/CatalogContext';
 import { useAuth } from './context/AuthContext';
 import { useHeroCarousel } from './hooks/useHeroCarousel';
+import { useAppUI } from './hooks/useAppUI';
 import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryClient';
 
@@ -9,7 +9,7 @@ import { queryKeys } from '@/lib/queryClient';
 import { Header } from '@/components/catalog/Header';
 import { HeroCarousel } from '@/components/catalog/HeroCarousel';
 import { Philosophy } from '@/components/catalog/Philosophy';
-import { CategoryTabs, type CategoryTabId } from '@/components/catalog/CategoryTabs';
+import { CategoryTabs } from '@/components/catalog/CategoryTabs';
 import { ServiceCardGrid } from '@/components/catalog/ServiceCardGrid';
 import { LookbookGrid } from '@/components/catalog/LookbookGrid';
 import { Footer } from '@/components/catalog/Footer';
@@ -18,23 +18,13 @@ import { ReservationForm } from '@/components/ReservationForm';
 import { AdminDashboard } from '@/components/AdminDashboard';
 import { AuthModal } from '@/components/AuthModal';
 
-import type { ServiceItem } from '@/services/api';
-
 function AppContent() {
   const { services, lookbookSlides } = useCatalog();
   const { isAdmin } = useAuth();
   const queryClient = useQueryClient();
 
-  // Local UI States
-  const [currentView, setCurrentView] = useState<'catalog' | 'admin'>('catalog');
-  const [activeTab, setActiveTab] = useState<CategoryTabId>('hair-cut');
-  
-  // Modals
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedService, setSelectedService] = useState<ServiceItem | null>(null);
-  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
-  const [quickViewService, setQuickViewService] = useState<ServiceItem | null>(null);
+  // Custom hook for UI state
+  const ui = useAppUI();
 
   // Carousel Hook
   const {
@@ -42,24 +32,7 @@ function AppContent() {
     nextHeroSlide,
     prevHeroSlide,
     goToSlide,
-  } = useHeroCarousel(lookbookSlides.length, currentView === 'catalog');
-
-  const handleOpenModal = (service: ServiceItem, variantId?: string | null) => {
-    setSelectedService(service);
-    setSelectedVariantId(variantId || null);
-    setIsModalOpen(true);
-    setQuickViewService(null); // Close quick view if open
-  };
-
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-    setSelectedService(null);
-    setSelectedVariantId(null);
-  };
-
-  const handleOpenQuickView = (service: ServiceItem) => {
-    setQuickViewService(service);
-  };
+  } = useHeroCarousel(lookbookSlides.length, ui.currentView === 'catalog');
 
   // Invalidate services + lookbook cache after admin CRUD operations
   const handleServicesChange = () => {
@@ -71,12 +44,12 @@ function AppContent() {
     <div className="min-h-screen bg-[#FAF9F5] text-[#1E1D1A] antialiased">
       {/* Header */}
       <Header
-        currentView={currentView}
-        setCurrentView={setCurrentView}
-        setIsAuthModalOpen={setIsAuthModalOpen}
+        currentView={ui.currentView}
+        setCurrentView={ui.setCurrentView}
+        setIsAuthModalOpen={ui.setIsAuthModalOpen}
       />
 
-      {currentView === 'catalog' ? (
+      {ui.currentView === 'catalog' ? (
         <>
           {/* Hero Carousel */}
           <HeroCarousel
@@ -106,15 +79,15 @@ function AppContent() {
 
             {/* Category Tabs */}
             <CategoryTabs
-              activeTab={activeTab}
-              setActiveTab={setActiveTab}
+              activeTab={ui.activeTab}
+              setActiveTab={ui.setActiveTab}
             />
 
             {/* Services Cards (Desktop / Mobile) */}
             <ServiceCardGrid
-              activeTab={activeTab}
-              handleOpenModal={handleOpenModal}
-              handleOpenQuickView={handleOpenQuickView}
+              activeTab={ui.activeTab}
+              handleOpenModal={ui.handleOpenModal}
+              handleOpenQuickView={ui.handleOpenQuickView}
             />
           </section>
 
@@ -137,30 +110,30 @@ function AppContent() {
       <Footer />
 
       {/* Reservation Form Modal */}
-      {selectedService && (
+      {ui.selectedService && (
         <ReservationForm
-          isOpen={isModalOpen}
-          onClose={handleCloseModal}
-          serviceId={selectedService.id}
-          serviceName={selectedService.name}
-          serviceDuration={selectedService.duration}
-          initialVariantId={selectedVariantId}
-          variants={selectedService.variants || []}
+          isOpen={ui.isModalOpen}
+          onClose={ui.handleCloseModal}
+          serviceId={ui.selectedService.id}
+          serviceName={ui.selectedService.name}
+          serviceDuration={ui.selectedService.duration}
+          initialVariantId={ui.selectedVariantId}
+          variants={ui.selectedService.variants || []}
         />
       )}
 
       {/* Auth Modal */}
       <AuthModal
-        isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
+        isOpen={ui.isAuthModalOpen}
+        onClose={ui.closeAuthModal}
       />
 
       {/* Service Quick-View Drawer Modal */}
-      {quickViewService && (
+      {ui.quickViewService && (
         <ServiceQuickView
-          service={quickViewService}
-          onClose={() => setQuickViewService(null)}
-          handleOpenModal={handleOpenModal}
+          service={ui.quickViewService}
+          onClose={ui.closeQuickView}
+          handleOpenModal={ui.handleOpenModal}
         />
       )}
     </div>
