@@ -7,7 +7,6 @@ import { PhoneInput } from '@/components/PhoneInput';
 import { 
   CheckCircle2, 
   Loader2, 
-  Smartphone, 
   HelpCircle, 
   AlertTriangle,
   RefreshCw,
@@ -148,37 +147,12 @@ export function WhatsAppManagement() {
               </div>
             )}
 
-            {/* 2. EXTERNAL API (Gateway) */}
-            {status?.provider === 'external-api' && (
-              <div className="space-y-4">
-                <div className="flex gap-4 p-4 border border-blue-200 bg-blue-50/50 text-blue-800">
-                  <Smartphone className="h-5 w-5 shrink-0 text-blue-600" />
-                  <div className="space-y-1 text-xs">
-                    <p className="font-bold uppercase tracking-wider">Modo API Remota Activo</p>
-                    <p className="font-light leading-relaxed">
-                      Las notificaciones se redirigen a un servicio o pasarela externa configurada en las variables de entorno.
-                    </p>
-                  </div>
-                </div>
-                <div className="p-4 border border-border bg-white text-xs space-y-2 font-light">
-                  <div className="flex justify-between border-b border-muted pb-1.5">
-                    <span className="text-muted-foreground">Teléfono Remoto:</span>
-                    <span className="font-medium text-foreground">{status.phoneNumber || 'Varios / Rotativo'}</span>
-                  </div>
-                  <div className="flex justify-between pt-0.5">
-                    <span className="text-muted-foreground">Estado de Enlace:</span>
-                    <span className="font-bold text-green-600 uppercase">ACTIVO</span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* 3. LOCAL WEBJS (QR Code & Session Management) */}
-            {status?.provider === 'local-webjs' && (
+            {/* Si es local-webjs o external-api, manejamos el estado de conexión */}
+            {status?.provider !== 'mock-logger' && (
               <div className="space-y-6">
                 
                 {/* Caso A: Esperando escaneo de QR */}
-                {status.status === 'QR_RECEIVED' && status.qrCode && (
+                {status?.status === 'QR_RECEIVED' && status.qrCode && (
                   <div className="flex flex-col items-center justify-center space-y-6 py-4">
                     <div className="text-center max-w-sm space-y-2">
                       <h4 className="text-xs font-bold uppercase tracking-widest text-[#7A6241]">
@@ -186,6 +160,7 @@ export function WhatsAppManagement() {
                       </h4>
                       <p className="text-xs text-muted-foreground font-light leading-relaxed">
                         Abre WhatsApp en tu teléfono, ve a <strong>Dispositivos vinculados</strong> y escanea el código QR a continuación para activar las notificaciones de reservas.
+                        {status.provider === 'external-api' && ' (La vinculación se realizará en el servidor puente remoto)'}
                       </p>
                     </div>
 
@@ -208,24 +183,24 @@ export function WhatsAppManagement() {
                 )}
 
                 {/* Caso B: Conectando / Iniciando */}
-                {(status.status === 'CONNECTING' || status.status === 'AUTHENTICATED') && !status.qrCode && (
+                {(status?.status === 'CONNECTING' || status?.status === 'AUTHENTICATED') && !status.qrCode && (
                   <div className="flex flex-col items-center justify-center py-10 space-y-4">
                     <Loader2 className="h-8 w-8 animate-spin text-[#7A6241]" />
                     <div className="text-center space-y-1">
                       <p className="text-xs font-semibold uppercase tracking-wider">
-                        {status.status === 'AUTHENTICATED' ? 'Sesión Autenticada' : 'Iniciando WhatsApp Web'}
+                        {status.status === 'AUTHENTICATED' ? 'Sesión Autenticada' : 'Estableciendo Conexión'}
                       </p>
                       <p className="text-xs text-muted-foreground font-light">
                         {status.status === 'AUTHENTICATED' 
                           ? 'Sincronizando chats y cargando conexión. Un momento...' 
-                          : 'Cargando navegador Chromium interno. Esto puede demorar unos segundos...'}
+                          : 'Cargando navegador o conectando con la pasarela. Por favor espera...'}
                       </p>
                     </div>
                   </div>
                 )}
 
                 {/* Caso C: Ya está conectado (READY) */}
-                {status.status === 'READY' && (
+                {status?.status === 'READY' && (
                   <div className="space-y-6">
                     <div className="flex items-center gap-4 p-5 border border-green-200 bg-green-50/50 text-green-900 rounded-none">
                       <CheckCircle2 className="h-10 w-10 shrink-0 text-green-600" />
@@ -241,19 +216,19 @@ export function WhatsAppManagement() {
                       <div className="flex justify-between items-center border-b border-muted pb-2">
                         <span className="text-muted-foreground">Teléfono Vinculado:</span>
                         <span className="font-mono font-medium text-foreground">
-                          {status.phoneNumber ? `+${status.phoneNumber}` : 'No disponible'}
+                          {status.phoneNumber ? `+${status.phoneNumber}` : 'Gateway Remoto (Activo)'}
                         </span>
                       </div>
                       <div className="flex justify-between items-center border-b border-muted pb-2">
-                        <span className="text-muted-foreground">Persistencia de Sesión:</span>
-                        <span className="font-semibold text-green-600 uppercase tracking-widest text-[10px]">
-                          ACTIVADA (LocalAuth)
+                        <span className="text-muted-foreground">Tipo de Enlace:</span>
+                        <span className="font-semibold text-[#7A6241] uppercase tracking-widest text-[10px]">
+                          {status.provider === 'local-webjs' ? 'CLIENTE LOCAL (LocalAuth)' : 'PASARELA EXTERNA (HTTP Bridge)'}
                         </span>
                       </div>
                       <div className="flex justify-between items-center pt-0.5">
-                        <span className="text-muted-foreground">Ubicación del Almacenamiento:</span>
-                        <span className="font-mono text-[10px] text-muted-foreground">
-                          backend/.wwebjs_auth
+                        <span className="text-muted-foreground">Estado de Enlace:</span>
+                        <span className="font-bold text-green-600 uppercase text-[10px] tracking-widest">
+                          ACTIVO
                         </span>
                       </div>
                     </div>
@@ -282,12 +257,25 @@ export function WhatsAppManagement() {
                 )}
 
                 {/* Caso D: Desconectado / Inactivo */}
-                {status.status === 'DISCONNECTED' && (
+                {status?.status === 'DISCONNECTED' && (
                   <div className="flex flex-col items-center justify-center py-10 space-y-4">
                     <AlertTriangle className="h-8 w-8 text-muted-foreground" />
                     <p className="text-xs text-muted-foreground font-light text-center max-w-xs leading-relaxed">
-                      El servicio de WhatsApp está desconectado. El backend intentará inicializarlo automáticamente. Si no responde, por favor verifica los logs del servidor.
+                      El servicio de WhatsApp está desconectado. El backend intentará inicializarlo automáticamente.
                     </p>
+                  </div>
+                )}
+
+                {/* Caso E: Error */}
+                {status?.status === 'ERROR' && (
+                  <div className="flex flex-col items-center justify-center py-10 space-y-4 text-center">
+                    <AlertTriangle className="h-8 w-8 text-red-500" />
+                    <div className="space-y-1">
+                      <p className="text-xs font-semibold text-red-800 uppercase tracking-wider">Error de Enlace</p>
+                      <p className="text-xs text-muted-foreground font-light max-w-xs leading-relaxed">
+                        Ha ocurrido un problema al conectar con el cliente o pasarela. Intenta recargar o verificar el servidor puente.
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>
