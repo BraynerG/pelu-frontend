@@ -5,6 +5,7 @@ import { WeeklyAgenda } from './admin/WeeklyAgenda';
 import { ReservationsList } from './admin/ReservationsList';
 import { ServicesManagement } from './admin/ServicesManagement';
 import { LookbookManagement } from './admin/LookbookManagement';
+import { WhatsAppManagement } from './admin/WhatsAppManagement';
 import { AdminTabs, type AdminTab } from './admin/AdminTabs';
 import type { ServiceItem, LookbookSlide } from '@/types';
 
@@ -82,6 +83,10 @@ export function AdminDashboard({ services, lookbookSlides, onServicesChange }: A
           lookbookSlides={lookbookSlides} 
           onServicesChange={onServicesChange} 
         />
+      )}
+
+      {activeTab === 'whatsapp' && (
+        <WhatsAppManagement />
       )}
     </div>
   );

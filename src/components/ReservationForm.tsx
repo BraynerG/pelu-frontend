@@ -164,6 +164,7 @@ export function ReservationForm({
               <ReservationContactStep 
                 isActive={activeStep === 'contact'}
                 register={form.register}
+                control={form.control}
                 errors={form.formState.errors}
                 isAuthenticated={isAuthenticated}
                 userPhone={user?.phone}

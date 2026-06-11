@@ -15,6 +15,8 @@ import {
 } from '@/components/ui/dialog';
 import { API_URL } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
+import { Controller } from 'react-hook-form';
+import { PhoneInput } from '@/components/PhoneInput';
 
 const loginSchema = z.object({
   email: z.string().email({ message: 'Email inválido' }),
@@ -225,11 +227,17 @@ export function AuthModal({ isOpen, onClose, defaultView = 'login' }: AuthModalP
 
             <div className="space-y-2">
               <Label htmlFor="reg-phone" className="text-neutral-300">Teléfono (Opcional)</Label>
-              <Input
-                id="reg-phone"
-                placeholder="Tu teléfono"
-                className="bg-neutral-800 border-neutral-700 text-white focus:ring-amber-500"
-                {...registerForm.register('phone')}
+              <Controller
+                name="phone"
+                control={registerForm.control}
+                render={({ field }) => (
+                  <PhoneInput
+                    value={field.value || ''}
+                    onChange={field.onChange}
+                    placeholder="Tu teléfono"
+                    isDark={true}
+                  />
+                )}
               />
             </div>
 

@@ -1,11 +1,14 @@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import type { UseFormRegister, FieldErrors } from 'react-hook-form';
+import type { UseFormRegister, FieldErrors, Control } from 'react-hook-form';
 import type { FormValues } from '@/hooks/useReservationForm';
+import { PhoneInput } from '@/components/PhoneInput';
+import { Controller } from 'react-hook-form';
 
 interface ReservationContactStepProps {
   isActive: boolean;
   register: UseFormRegister<FormValues>;
+  control: Control<FormValues>;
   errors: FieldErrors<FormValues>;
   isAuthenticated: boolean;
   userPhone?: string;
@@ -15,6 +18,7 @@ interface ReservationContactStepProps {
 export function ReservationContactStep({
   isActive,
   register,
+  control,
   errors,
   isAuthenticated,
   userPhone,
@@ -38,12 +42,17 @@ export function ReservationContactStep({
 
       <div className="space-y-2">
         <Label htmlFor="customerPhone" className="text-foreground font-medium text-sm">Teléfono</Label>
-        <Input
-          id="customerPhone"
-          placeholder="Tu teléfono"
-          className="bg-white border-border text-foreground focus:ring-primary focus:border-primary rounded-none font-light min-h-[44px]"
-          {...register('customerPhone')}
-          disabled={isAuthenticated && !!userPhone}
+        <Controller
+          name="customerPhone"
+          control={control}
+          render={({ field }) => (
+            <PhoneInput
+              value={field.value}
+              onChange={field.onChange}
+              disabled={isAuthenticated && !!userPhone}
+              placeholder="Tu teléfono"
+            />
+          )}
         />
         {errors.customerPhone && (
           <p className="text-red-500 text-xs font-light">{errors.customerPhone.message}</p>
