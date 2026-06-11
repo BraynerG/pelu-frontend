@@ -15,7 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { API_URL, type OccupiedSlot } from '@/services/api';
+import { API_URL } from '@/services/api';
 import { useOccupiedSlotsQuery } from '@/hooks/useQueries';
 
 const formSchema = z.object({

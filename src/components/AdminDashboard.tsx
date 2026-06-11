@@ -33,7 +33,7 @@ export function AdminDashboard({ services, lookbookSlides, onServicesChange }: A
           Panel de Gestión Administrativa
         </h2>
         <Button 
-          onClick={reservationsState.fetchReservations} 
+          onClick={() => reservationsState.fetchReservations()} 
           variant="outline" 
           className="border-border text-muted-foreground hover:text-foreground hover:bg-muted rounded-none font-light text-xs sm:text-sm px-3 py-1.5 h-auto"
         >

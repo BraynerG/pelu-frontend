@@ -9,7 +9,7 @@ interface LookbookFormModalProps {
   isOpen: boolean;
   editingLookbook: LookbookSlide | null;
   onClose: () => void;
-  onSave: (payload: any) => Promise<void>;
+  onSave: (payload: any) => void | Promise<void>;
 }
 
 export function LookbookFormModal({

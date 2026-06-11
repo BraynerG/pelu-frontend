@@ -13,11 +13,11 @@ interface ReservationsListProps {
   setStatusFilter: (status: 'ALL' | 'PENDING' | 'CONFIRMED' | 'MODIFIED' | 'CANCELLED') => void;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
-  updateStatus: (id: string, status: 'CONFIRMED' | 'CANCELLED') => Promise<void>;
+  updateStatus: (id: string, status: 'CONFIRMED' | 'CANCELLED') => void | Promise<void>;
   reschedulingId: string | null;
   openRescheduleModal: (res: Reservation) => void;
   closeRescheduleModal: () => void;
-  handleReschedule: (id: string, dateToUse: string) => Promise<void>;
+  handleReschedule: (id: string, dateToUse: string) => void | Promise<void>;
   selectedRescheduleDay: string;
   setSelectedRescheduleDay: (day: string) => void;
   selectedRescheduleTime: string;

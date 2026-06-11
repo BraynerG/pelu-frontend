@@ -9,7 +9,7 @@ interface ServiceFormModalProps {
   isOpen: boolean;
   editingService: ServiceItem | null;
   onClose: () => void;
-  onSave: (payload: any) => Promise<void>;
+  onSave: (payload: any) => void | Promise<void>;
 }
 
 export function ServiceFormModal({

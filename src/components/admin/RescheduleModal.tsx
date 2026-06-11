@@ -11,7 +11,7 @@ interface RescheduleModalProps {
   selectedRescheduleTime: string;
   setSelectedRescheduleTime: (time: string) => void;
   onClose: () => void;
-  handleReschedule: (id: string, dateToUse: string) => Promise<void>;
+  handleReschedule: (id: string, dateToUse: string) => void | Promise<void>;
 }
 
 export function RescheduleModal({
