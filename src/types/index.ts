@@ -31,3 +31,9 @@ export interface OccupiedSlot {
   date: string;
   duration: number;
 }
+
+export interface GoogleCalendarStatus {
+  connected: boolean;
+  email?: string;
+  provider?: string;
+}
