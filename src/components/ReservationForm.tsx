@@ -63,6 +63,7 @@ export function ReservationForm({
 
   const {
     loadingOccupied,
+    loadingSchedule,
     selectedDay,
     setSelectedDay,
     selectedTime,
@@ -152,7 +153,7 @@ export function ReservationForm({
                 setSelectedDay={setSelectedDay}
                 selectedTime={selectedTime}
                 setSelectedTime={setSelectedTime}
-                loadingOccupied={loadingOccupied}
+                loadingOccupied={loadingOccupied || loadingSchedule}
                 activeDuration={activeDuration}
                 errors={form.formState.errors}
                 getNext14Days={getNext14Days}

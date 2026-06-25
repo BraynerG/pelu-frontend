@@ -29,4 +29,8 @@ export const queryKeys = {
     all: ['occupiedSlots'] as const,
     list: () => [...queryKeys.occupiedSlots.all, 'list'] as const,
   },
+  schedules: {
+    all: ['schedules'] as const,
+    config: () => [...queryKeys.schedules.all, 'config'] as const,
+  },
 } as const;

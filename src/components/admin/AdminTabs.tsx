@@ -1,6 +1,6 @@
 import { Calendar, FileText, Sparkles, MessageSquare } from 'lucide-react';
 
-export type AdminTab = 'reservations' | 'services' | 'lookbook' | 'whatsapp' | 'google-calendar';
+export type AdminTab = 'reservations' | 'services' | 'lookbook' | 'whatsapp' | 'google-calendar' | 'schedules';
 
 interface AdminTabsProps {
   activeTab: AdminTab;
@@ -63,6 +63,20 @@ export function AdminTabs({ activeTab, setActiveTab }: AdminTabsProps) {
           WhatsApp<span className="hidden sm:inline"> Notificaciones</span>
         </span>
         {activeTab === 'whatsapp' && (
+          <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#7A6241]" />
+        )}
+      </button>
+      <button
+        onClick={() => setActiveTab('schedules')}
+        className={`pb-4 text-xs tracking-[0.15em] sm:tracking-[0.2em] font-bold uppercase transition-all duration-300 relative rounded-none ${
+          activeTab === 'schedules' ? 'text-[#1E1D1A]' : 'text-[#8A8172] hover:text-[#1E1D1A]'
+        }`}
+      >
+        <span className="flex items-center gap-2">
+          <Calendar className="h-4 w-4 shrink-0 text-[#7A6241]" />
+          Horarios
+        </span>
+        {activeTab === 'schedules' && (
           <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#7A6241]" />
         )}
       </button>

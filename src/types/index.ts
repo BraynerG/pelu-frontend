@@ -37,3 +37,23 @@ export interface GoogleCalendarStatus {
   email?: string;
   provider?: string;
 }
+
+export interface BusinessSchedule {
+  id: string;
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+  isClosed: boolean;
+}
+
+export interface TimeOff {
+  id: string;
+  startDate: string;
+  endDate: string;
+  reason?: string;
+}
+
+export interface ScheduleConfig {
+  businessHours: BusinessSchedule[];
+  timeOffs: TimeOff[];
+}

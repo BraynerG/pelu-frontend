@@ -7,6 +7,7 @@ import { ServicesManagement } from './admin/ServicesManagement';
 import { LookbookManagement } from './admin/LookbookManagement';
 import { WhatsAppManagement } from './admin/WhatsAppManagement';
 import { GoogleCalendarManagement } from './admin/GoogleCalendarManagement';
+import { ScheduleManagement } from './admin/ScheduleManagement';
 import { AdminTabs, type AdminTab } from './admin/AdminTabs';
 import type { ServiceItem, LookbookSlide } from '@/types';
 
@@ -92,6 +93,10 @@ export function AdminDashboard({ services, lookbookSlides, onServicesChange }: A
 
       {activeTab === 'google-calendar' && (
         <GoogleCalendarManagement />
+      )}
+
+      {activeTab === 'schedules' && (
+        <ScheduleManagement />
       )}
     </div>
   );
