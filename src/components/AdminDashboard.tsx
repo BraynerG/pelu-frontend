@@ -69,6 +69,8 @@ export function AdminDashboard({ services, lookbookSlides, onServicesChange }: A
             setSelectedRescheduleDay={reservationsState.setSelectedRescheduleDay}
             selectedRescheduleTime={reservationsState.selectedRescheduleTime}
             setSelectedRescheduleTime={reservationsState.setSelectedRescheduleTime}
+            adminCreateReservation={reservationsState.adminCreateReservation}
+            updateAdminReservation={reservationsState.updateAdminReservation}
           />
         </>
       )}

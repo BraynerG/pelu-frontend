@@ -59,6 +59,41 @@ async function patchReschedule(
   if (!response.ok) throw new Error(result.error?.message || 'Error al reagendar');
 }
 
+async function postAdminReservation(
+  token: string | null,
+  data: Omit<Reservation, 'id' | 'status'> & { durationOverride?: number }
+): Promise<Reservation> {
+  const response = await fetch(`${API_URL}/reservations/admin`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify(data),
+  });
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.error?.message || 'Error al crear reserva (Admin)');
+  return result.data;
+}
+
+async function putReservation(
+  token: string | null,
+  id: string,
+  data: Partial<Omit<Reservation, 'id' | 'status' | 'date'>> & { durationOverride?: number }
+): Promise<Reservation> {
+  const response = await fetch(`${API_URL}/reservations/${id}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify(data),
+  });
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.error?.message || 'Error al actualizar reserva');
+  return result.data;
+}
+
 export function useReservations() {
   const { token } = useAuth();
   const queryClient = useQueryClient();
@@ -129,6 +164,36 @@ export function useReservations() {
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.reservations.list() });
       queryClient.invalidateQueries({ queryKey: queryKeys.occupiedSlots.list() });
+    },
+  });
+
+  const adminCreateMutation = useMutation({
+    mutationFn: (data: Omit<Reservation, 'id' | 'status'> & { durationOverride?: number }) =>
+      postAdminReservation(token, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.reservations.list() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.occupiedSlots.list() });
+    },
+  });
+
+  const updateAdminMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<Omit<Reservation, 'id' | 'status' | 'date'>> & { durationOverride?: number } }) =>
+      putReservation(token, id, data),
+    onMutate: async ({ id, data }) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.reservations.list() });
+      const previous = queryClient.getQueryData<Reservation[]>(queryKeys.reservations.list());
+      queryClient.setQueryData<Reservation[]>(queryKeys.reservations.list(), (old) =>
+        old?.map((r) => (r.id === id ? { ...r, ...data } : r)) ?? []
+      );
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(queryKeys.reservations.list(), context.previous);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.reservations.list() });
     },
   });
 
@@ -210,5 +275,7 @@ export function useReservations() {
     openRescheduleModal,
     closeRescheduleModal,
     filteredReservations,
+    adminCreateReservation: adminCreateMutation.mutateAsync,
+    updateAdminReservation: updateAdminMutation.mutateAsync,
   };
 }

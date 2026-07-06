@@ -1,7 +1,9 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, X, User, MessageSquare, Phone, Clock, Check } from 'lucide-react';
+import { Search, X, User, MessageSquare, Phone, Clock, Check, Plus, Edit2 } from 'lucide-react';
 import { RescheduleModal } from './RescheduleModal';
+import { AdminReservationFormModal } from './AdminReservationFormModal';
+import { useState } from 'react';
 import type { ServiceItem } from '@/services/api';
 import type { Reservation } from '@/hooks/useReservations';
 
@@ -22,6 +24,8 @@ interface ReservationsListProps {
   setSelectedRescheduleDay: (day: string) => void;
   selectedRescheduleTime: string;
   setSelectedRescheduleTime: (time: string) => void;
+  adminCreateReservation?: (data: any) => Promise<any>;
+  updateAdminReservation?: (args: { id: string, data: any }) => Promise<any>;
 }
 
 export function ReservationsList({
@@ -39,9 +43,33 @@ export function ReservationsList({
   handleReschedule,
   selectedRescheduleDay,
   setSelectedRescheduleDay,
-  selectedRescheduleTime,
-  setSelectedRescheduleTime,
+  adminCreateReservation,
+  updateAdminReservation,
 }: ReservationsListProps) {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
+  const [editingReservation, setEditingReservation] = useState<Reservation | undefined>();
+
+  const openCreateModal = () => {
+    setModalMode('create');
+    setEditingReservation(undefined);
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (res: Reservation) => {
+    setModalMode('edit');
+    setEditingReservation(res);
+    setIsModalOpen(true);
+  };
+
+  const handleModalSubmit = async (data: any) => {
+    if (modalMode === 'create' && adminCreateReservation) {
+      await adminCreateReservation(data);
+    } else if (modalMode === 'edit' && updateAdminReservation && editingReservation) {
+      await updateAdminReservation({ id: editingReservation.id, data });
+    }
+  };
+
   const getStatusLabel = (status: string) => {
     switch (status) {
       case 'CONFIRMED': return 'Confirmada';
@@ -102,24 +130,33 @@ export function ReservationsList({
           })}
         </div>
 
-        {/* Search Input */}
-        <div className="relative w-full md:w-72">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#8A8172]" />
-          <Input
-            type="text"
-            placeholder="Buscar por cliente o teléfono..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 bg-[#FAF9F5] border-border text-xs rounded-none h-10 md:h-9 font-light placeholder:text-[#8A8172]/70 focus-visible:ring-[#7A6241]"
-          />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8A8172] hover:text-[#1E1D1A]"
-            >
-              <X className="h-3 w-3" />
-            </button>
-          )}
+        {/* Actions & Search */}
+        <div className="flex flex-col sm:flex-row items-center gap-3">
+          <Button
+            onClick={openCreateModal}
+            className="bg-[#1E1D1A] hover:bg-[#7A6241] text-white w-full sm:w-auto h-10 md:h-9 rounded-none text-xs uppercase font-semibold tracking-wider transition-colors"
+          >
+            <Plus className="h-4 w-4 mr-1.5" /> Crear Cita
+          </Button>
+
+          <div className="relative w-full md:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#8A8172]" />
+            <Input
+              type="text"
+              placeholder="Buscar cliente..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 bg-[#FAF9F5] border-border text-xs rounded-none h-10 md:h-9 font-light placeholder:text-[#8A8172]/70 focus-visible:ring-[#7A6241]"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8A8172] hover:text-[#1E1D1A]"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -228,6 +265,15 @@ export function ReservationsList({
                   {/* Acciones */}
                   <td className="px-6 py-5">
                     <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-border text-[#1E1D1A] hover:bg-muted flex items-center gap-1 rounded-none text-xs uppercase font-semibold tracking-wider px-2 md:px-3.5"
+                        onClick={() => openEditModal(res)}
+                        title="Editar"
+                      >
+                        <Edit2 className="h-3.5 w-3.5" /> <span className="hidden md:inline">Editar</span>
+                      </Button>
                       {!isCancelled && (
                         <>
                           {(res.status === 'PENDING' || res.status === 'MODIFIED') && (
@@ -354,6 +400,15 @@ export function ReservationsList({
 
               {/* Action row */}
               <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-border text-[#1E1D1A] hover:bg-muted text-[9px] uppercase font-bold tracking-wider h-10 rounded-none px-2"
+                  onClick={() => openEditModal(res)}
+                  title="Editar"
+                >
+                  <Edit2 className="h-3.5 w-3.5" />
+                </Button>
                 {!isCancelled && (
                   <>
                     {(res.status === 'PENDING' || res.status === 'MODIFIED') && (
@@ -417,6 +472,15 @@ export function ReservationsList({
           handleReschedule={handleReschedule}
         />
       )}
+
+      <AdminReservationFormModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        mode={modalMode}
+        reservation={editingReservation}
+        services={services}
+        onSubmit={handleModalSubmit}
+      />
     </>
   );
 }
