@@ -3,6 +3,7 @@ import { X, Calendar, Clock, User, AlignLeft, AlertTriangle } from 'lucide-react
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PhoneInput } from '@/components/PhoneInput';
+import { useOccupiedSlotsQuery } from '@/hooks/useQueries';
 import type { Reservation } from '@/hooks/useReservations';
 import type { ServiceItem } from '@/services/api';
 
@@ -33,6 +34,49 @@ export function AdminReservationFormModal({
   const [durationOverride, setDurationOverride] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const { data: occupiedSlots = [] } = useOccupiedSlotsQuery(isOpen);
+
+  const adminTimeSlots = React.useMemo(() => {
+    const slots = [];
+    for (let h = 0; h < 24; h++) {
+      slots.push(`${String(h).padStart(2, '0')}:00`);
+      slots.push(`${String(h).padStart(2, '0')}:30`);
+    }
+    return slots;
+  }, []);
+
+  const checkSlotOccupied = (timeStr?: string) => {
+    if (mode !== 'create' || !date || (!time && !timeStr) || !serviceId) return false;
+    const timeToCheck = timeStr || time;
+    if (!timeToCheck) return false;
+    
+    const service = services.find((s) => s.id === serviceId);
+    let duration = service?.duration || 60;
+    if (variantId && service?.variants) {
+      const variant = service.variants.find((v) => v.id === variantId);
+      if (variant) duration = variant.duration;
+    }
+    if (durationOverride) {
+      const overrideVal = parseInt(durationOverride, 10);
+      if (!isNaN(overrideVal) && overrideVal > 0) {
+        duration = overrideVal;
+      }
+    }
+
+    const [year, month, day] = date.split('-').map(Number);
+    const [hours, minutes] = timeToCheck.split(':').map(Number);
+    const slotStart = new Date(year, month - 1, day, hours, minutes).getTime();
+    const slotEnd = slotStart + duration * 60000;
+
+    return occupiedSlots.some((occupied: any) => {
+      const resStart = new Date(occupied.date).getTime();
+      const resEnd = resStart + occupied.duration * 60000;
+      return slotStart < resEnd && slotEnd > resStart;
+    });
+  };
+
+  const occupiedWarning = checkSlotOccupied(time);
 
   useEffect(() => {
     if (isOpen) {
@@ -76,6 +120,11 @@ export function AdminReservationFormModal({
 
     if (mode === 'create' && (!date || !time)) {
       setError('Por favor, selecciona una fecha y hora.');
+      return;
+    }
+
+    if (occupiedWarning) {
+      setError('El horario seleccionado se superpone con otra cita existente.');
       return;
     }
 
@@ -141,8 +190,8 @@ export function AdminReservationFormModal({
             )}
 
             {/* Date and Time (Only editable in create mode) */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
+            <div className="space-y-4">
+              <div className="space-y-2 w-full md:w-1/2">
                 <label className="text-xs font-semibold uppercase tracking-wider text-[#1E1D1A]">
                   Fecha {mode === 'edit' && '(Solo Lectura)'}
                 </label>
@@ -153,26 +202,59 @@ export function AdminReservationFormModal({
                     required={mode === 'create'}
                     disabled={mode === 'edit'}
                     value={date}
-                    onChange={(e) => setDate(e.target.value)}
+                    onChange={(e) => {
+                      setDate(e.target.value);
+                      if (mode === 'create') setTime('');
+                    }}
                     className="pl-10 h-11 bg-white border-[#ECE7DC] rounded-none focus-visible:ring-[#7A6241]"
                   />
                 </div>
               </div>
+
               <div className="space-y-2">
-                <label className="text-xs font-semibold uppercase tracking-wider text-[#1E1D1A]">
-                  Hora {mode === 'edit' && '(Solo Lectura)'}
+                <label className="text-xs font-semibold uppercase tracking-wider text-[#1E1D1A] flex items-center gap-1.5">
+                  <Clock className="h-4 w-4 text-[#7A6241]" /> Hora {mode === 'edit' && '(Solo Lectura)'}
                 </label>
-                <div className="relative">
-                  <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#8A8172]" />
-                  <Input
-                    type="time"
-                    required={mode === 'create'}
-                    disabled={mode === 'edit'}
-                    value={time}
-                    onChange={(e) => setTime(e.target.value)}
-                    className="pl-10 h-11 bg-white border-[#ECE7DC] rounded-none focus-visible:ring-[#7A6241]"
-                  />
-                </div>
+                {mode === 'edit' ? (
+                  <div className="relative w-full md:w-1/2">
+                    <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#8A8172]" />
+                    <Input
+                      type="time"
+                      disabled
+                      value={time}
+                      className="pl-10 h-11 bg-white border-[#ECE7DC] rounded-none focus-visible:ring-[#7A6241]"
+                    />
+                  </div>
+                ) : !date ? (
+                  <div className="text-xs text-[#8A8172] italic py-2 px-3 bg-[#FAF9F5] border border-[#ECE7DC]">Selecciona una fecha primero para ver las horas disponibles.</div>
+                ) : !serviceId ? (
+                  <div className="text-xs text-[#8A8172] italic py-2 px-3 bg-[#FAF9F5] border border-[#ECE7DC]">Selecciona un servicio primero para calcular la disponibilidad.</div>
+                ) : (
+                  <div className="grid grid-cols-4 md:grid-cols-6 gap-1.5 max-h-[160px] md:max-h-[180px] overflow-y-auto pr-1">
+                    {adminTimeSlots.map((slot) => {
+                      const occupied = checkSlotOccupied(slot);
+                      const isSelected = time === slot;
+                      return (
+                        <button
+                          key={slot}
+                          type="button"
+                          disabled={occupied}
+                          onClick={() => setTime(slot)}
+                          className={`py-2 text-[10px] tracking-wider border text-center transition-all duration-150 rounded-none flex items-center justify-center flex-col min-h-[44px] ${
+                            occupied
+                              ? 'bg-[#E5E5E5]/20 text-[#A3A3A3] border-dashed border-[#ECE7DC] cursor-not-allowed line-through'
+                              : isSelected
+                                ? 'border-[#7A6241] bg-[#7A6241] text-white font-bold'
+                                : 'border-[#ECE7DC] text-[#1E1D1A] bg-white hover:border-[#1E1D1A]'
+                          }`}
+                        >
+                          <span>{slot}</span>
+                          {occupied && <span className="text-[6.5px] text-[#C62828] font-bold tracking-tight not-italic mt-0.5">Ocupado</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -308,8 +390,8 @@ export function AdminReservationFormModal({
             </Button>
             <Button
               type="submit"
-              disabled={isSubmitting}
-              className="bg-[#1E1D1A] hover:bg-[#7A6241] text-white rounded-none uppercase text-xs tracking-wider font-semibold transition-colors"
+              disabled={isSubmitting || occupiedWarning}
+              className="bg-[#1E1D1A] hover:bg-[#7A6241] text-white rounded-none uppercase text-xs tracking-wider font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSubmitting ? 'Guardando...' : 'Guardar Cita'}
             </Button>
