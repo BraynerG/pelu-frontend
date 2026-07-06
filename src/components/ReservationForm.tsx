@@ -68,7 +68,10 @@ export function ReservationForm({
     setSelectedDay,
     selectedTime,
     setSelectedTime,
-    getNext14Days,
+    currentMonthDate,
+    nextMonth,
+    prevMonth,
+    getCalendarDays,
     formatDateKey,
     timeSlots,
     isSlotOccupiedForClient,
@@ -156,7 +159,10 @@ export function ReservationForm({
                 loadingOccupied={loadingOccupied || loadingSchedule}
                 activeDuration={activeDuration}
                 errors={form.formState.errors}
-                getNext14Days={getNext14Days}
+                currentMonthDate={currentMonthDate}
+                nextMonth={nextMonth}
+                prevMonth={prevMonth}
+                getCalendarDays={getCalendarDays}
                 formatDateKey={formatDateKey}
                 timeSlots={timeSlots}
                 isSlotOccupiedForClient={isSlotOccupiedForClient}

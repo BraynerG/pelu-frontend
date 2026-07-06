@@ -8,14 +8,48 @@ export function useReservationCalendar(isOpen: boolean) {
   const [selectedDay, setSelectedDay] = useState<string>('');
   const [selectedTime, setSelectedTime] = useState<string>('');
 
-  const getNext14Days = () => {
-    const days = [];
+  const [currentMonthDate, setCurrentMonthDate] = useState<Date>(() => {
     const today = new Date();
-    for (let i = 0; i < 14; i++) {
-      const d = new Date(today);
-      d.setDate(today.getDate() + i);
-      days.push(d);
+    return new Date(today.getFullYear(), today.getMonth(), 1);
+  });
+
+  const nextMonth = () => {
+    setCurrentMonthDate((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+  };
+
+  const prevMonth = () => {
+    setCurrentMonthDate((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+  };
+
+  const getCalendarDays = () => {
+    const year = currentMonthDate.getFullYear();
+    const month = currentMonthDate.getMonth();
+    const firstDayOfMonth = new Date(year, month, 1);
+    const lastDayOfMonth = new Date(year, month + 1, 0);
+    
+    // getDay() is 0 for Sunday, 1 for Monday. Map to Monday=0, Sunday=6
+    let startDayOfWeek = firstDayOfMonth.getDay() - 1;
+    if (startDayOfWeek === -1) startDayOfWeek = 6;
+    
+    const days = [];
+    
+    // Previous month padding
+    for (let i = startDayOfWeek; i > 0; i--) {
+      days.push({ date: new Date(year, month, 1 - i), isCurrentMonth: false });
     }
+    
+    // Current month days
+    const daysInMonth = lastDayOfMonth.getDate();
+    for (let i = 1; i <= daysInMonth; i++) {
+      days.push({ date: new Date(year, month, i), isCurrentMonth: true });
+    }
+    
+    // Next month padding to ensure a consistent grid (always 6 rows of 7 days = 42 cells)
+    const remainingDays = 42 - days.length;
+    for (let i = 1; i <= remainingDays; i++) {
+      days.push({ date: new Date(year, month + 1, i), isCurrentMonth: false });
+    }
+    
     return days;
   };
 
@@ -102,7 +136,10 @@ export function useReservationCalendar(isOpen: boolean) {
     setSelectedDay,
     selectedTime,
     setSelectedTime,
-    getNext14Days,
+    currentMonthDate,
+    nextMonth,
+    prevMonth,
+    getCalendarDays,
     formatDateKey,
     timeSlots,
     getDaySchedule,

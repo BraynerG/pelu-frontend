@@ -1,5 +1,5 @@
 import { Label } from '@/components/ui/label';
-import { Calendar, Clock } from 'lucide-react';
+import { Calendar, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { FieldErrors } from 'react-hook-form';
 import type { FormValues } from '@/hooks/useReservationForm';
 
@@ -12,7 +12,10 @@ interface ReservationDateTimeStepProps {
   loadingOccupied: boolean;
   activeDuration: number;
   errors: FieldErrors<FormValues>;
-  getNext14Days: () => Date[];
+  currentMonthDate: Date;
+  nextMonth: () => void;
+  prevMonth: () => void;
+  getCalendarDays: () => { date: Date; isCurrentMonth: boolean }[];
   formatDateKey: (d: Date) => string;
   timeSlots: string[];
   isSlotOccupiedForClient: (dayStr: string, timeStr: string, duration: number) => boolean;
@@ -27,11 +30,15 @@ export function ReservationDateTimeStep({
   loadingOccupied,
   activeDuration,
   errors,
-  getNext14Days,
+  currentMonthDate,
+  nextMonth,
+  prevMonth,
+  getCalendarDays,
   formatDateKey,
   timeSlots,
   isSlotOccupiedForClient
 }: ReservationDateTimeStepProps) {
+  const todayDateKey = formatDateKey(new Date());
   return (
     <div className={`space-y-4 md:block md:border-t md:border-[#ECE7DC] md:pt-4 w-full max-w-full overflow-hidden flex flex-col flex-grow min-h-0 md:h-auto md:flex-none ${isActive ? 'block' : 'hidden'}`}>
       <Label className="text-foreground font-medium text-sm flex items-center gap-1.5">
@@ -40,42 +47,73 @@ export function ReservationDateTimeStep({
       </Label>
 
       {/* Day Selector */}
-      <div className="space-y-1.5 w-full max-w-full overflow-hidden flex flex-col min-w-0">
+      <div className="space-y-2 w-full max-w-full overflow-hidden flex flex-col min-w-0">
         <span className="text-[10px] uppercase tracking-wider text-[#8A8172] font-semibold">1. Selecciona el Día</span>
-        <div className="flex gap-2 overflow-x-auto pb-2 w-full max-w-full scrollbar-thin scrollbar-thumb-[#C4B297]">
-          {getNext14Days().map((day, idx) => {
-            const dayKey = formatDateKey(day);
-            const isSelected = selectedDay === dayKey;
-            const dayName = day.toLocaleDateString('es-ES', { weekday: 'short' }).toUpperCase();
-            const dayNum = day.getDate();
-            const monthName = day.toLocaleDateString('es-ES', { month: 'short' }).toUpperCase();
-            
-            return (
-              <button
-                key={idx}
-                type="button"
-                onClick={() => {
-                  setSelectedDay(dayKey);
-                  setSelectedTime(''); // Reset time when day changes
-                }}
-                className={`flex flex-col items-center justify-center min-w-[68px] md:min-w-[55px] p-3 md:p-2 border transition-all duration-200 rounded-none ${
-                  isSelected
-                    ? 'border-[#7A6241] bg-[#7A6241]/5 text-[#7A6241] font-semibold shadow-sm'
-                    : 'border-[#ECE7DC] bg-[#FAF9F5] text-[#8A8172] hover:border-[#1E1D1A] hover:text-[#1E1D1A]'
-                }`}
-              >
-                <span className="text-[8px] tracking-widest font-medium opacity-80">{dayName}</span>
-                <span className="text-xs font-serif font-bold my-0.5">{dayNum}</span>
-                <span className="text-[8px] tracking-widest uppercase font-semibold">{monthName}</span>
-              </button>
-            );
-          })}
+        
+        <div className="border border-[#ECE7DC] bg-[#FAF9F5] p-3 md:p-4 rounded-none">
+          {/* Calendar Header */}
+          <div className="flex justify-between items-center mb-4">
+            <button 
+              type="button" 
+              onClick={prevMonth}
+              className="p-1 hover:bg-[#ECE7DC] transition-colors rounded-none text-[#8A8172]"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <span className="text-sm font-serif font-bold text-[#1E1D1A] uppercase tracking-widest">
+              {currentMonthDate.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}
+            </span>
+            <button 
+              type="button" 
+              onClick={nextMonth}
+              className="p-1 hover:bg-[#ECE7DC] transition-colors rounded-none text-[#8A8172]"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+
+          {/* Calendar Grid */}
+          <div className="grid grid-cols-7 gap-1 md:gap-2 text-center mb-2">
+            {['L', 'M', 'X', 'J', 'V', 'S', 'D'].map(day => (
+              <span key={day} className="text-[10px] font-semibold text-[#8A8172]">{day}</span>
+            ))}
+          </div>
+          <div className="grid grid-cols-7 gap-1 md:gap-2">
+            {getCalendarDays().map((dayObj, idx) => {
+              const dayKey = formatDateKey(dayObj.date);
+              const isSelected = selectedDay === dayKey;
+              const isPast = dayKey < todayDateKey;
+              
+              return (
+                <button
+                  key={idx}
+                  type="button"
+                  disabled={isPast || !dayObj.isCurrentMonth}
+                  onClick={() => {
+                    setSelectedDay(dayKey);
+                    setSelectedTime('');
+                  }}
+                  className={`aspect-square flex items-center justify-center text-xs font-serif transition-all duration-200 rounded-none ${
+                    !dayObj.isCurrentMonth 
+                      ? 'text-transparent cursor-default' 
+                      : isPast
+                        ? 'text-[#C4B297]/50 cursor-not-allowed line-through decoration-[#C4B297]/30'
+                        : isSelected
+                          ? 'bg-[#7A6241] text-white font-bold shadow-sm'
+                          : 'bg-white border border-[#ECE7DC] text-[#1E1D1A] hover:border-[#1E1D1A]'
+                  }`}
+                >
+                  {dayObj.isCurrentMonth ? dayObj.date.getDate() : ''}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 
       {/* Time Selector */}
       {selectedDay && (
-        <div className="space-y-1.5 animate-fade-in flex flex-col min-h-0">
+        <div className="space-y-1.5 animate-fade-in flex flex-col mt-4">
           <span className="text-[10px] uppercase tracking-wider text-[#8A8172] font-semibold block flex items-center gap-1">
             <Clock className="h-3 w-3 text-[#7A6241]" />
             2. Selecciona la Hora
@@ -83,7 +121,7 @@ export function ReservationDateTimeStep({
           {loadingOccupied ? (
             <div className="text-center py-4 text-xs text-[#8A8172] italic font-light">Cargando disponibilidad...</div>
           ) : (
-            <div className="grid grid-cols-3 md:grid-cols-4 gap-1.5 max-h-[180px] md:max-h-[130px] overflow-y-auto pr-1">
+            <div className="grid grid-cols-3 md:grid-cols-4 gap-2">
               {timeSlots.map((slot) => {
                 const occupied = isSlotOccupiedForClient(selectedDay, slot, activeDuration);
                 const isSelected = selectedTime === slot;
