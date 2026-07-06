@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Calendar, Clock, User, Phone, AlignLeft, AlertTriangle } from 'lucide-react';
+import { X, Calendar, Clock, User, AlignLeft, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PhoneInput } from '@/components/PhoneInput';
@@ -208,7 +208,6 @@ export function AdminReservationFormModal({
                 <PhoneInput
                   value={customerPhone}
                   onChange={setCustomerPhone}
-                  required
                 />
               </div>
             </div>

@@ -43,6 +43,8 @@ export function ReservationsList({
   handleReschedule,
   selectedRescheduleDay,
   setSelectedRescheduleDay,
+  selectedRescheduleTime,
+  setSelectedRescheduleTime,
   adminCreateReservation,
   updateAdminReservation,
 }: ReservationsListProps) {
